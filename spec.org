@@ -1,0 +1,53 @@
+* Vocabulary
+
+- A /name/ or a /variable/ is a sequence of characters, not including a space or one of the following: ~" , ' ` ( ) [ ] { } | ; #~: 
+- A /note/ is a common music note and its octave (examples: ~A#4~, ~B♭2~, ~Bb2~,
+~C♯2~, ~c3~).
+- A /rest/ is the literal ~rest~ or a rest symbol.
+- A /duration/ is a positive fraction (with a power of two denominator) or
+integer.
+- A /tuplet/ is a positive integer followed by the character ~t~ (example: a triplet is ~3t~.
+- A /time-signature/ is a positive fraction (with a power of two denominator).
+- A /key-signature/ is a music note.
+
+
+* Grammar
+
+#+BEGIN_EXAMPLE
+PROGRAM = (define variable EXPR) PROGRAM
+        | SCORE PROGRAM
+
+EXPR = FORM
+     | variable
+
+SCORE = (~score~ EXPR VOICE ...)
+
+VOICE = (~voice~ key-signature time-signature
+                 VOICE-INTERNAL ...)
+
+VOICE-INTERNAL = MEASURE
+               | (key-signature VOICE-INTERNAL ...)
+               | (time-signature VOICE-INTERNAL ...)
+
+MEASURE = (~measure~ BEAT-THING ...)
+
+BEAT-THING = note
+           | rest
+           | (duration note)
+           | (duration rest)
+
+FORM = (~form~ FORM-SPECIFIER)
+
+FORM-SPECIFIER = variable
+               | PHRASE
+               | (~or~ FORM-SPECIFIER FORM-SPECIFIER ...)
+               | (~cadence~ CADENCE-TYPE FORM-SPECIFIER)
+               | (~cadence~ CADENCE-TYPE key FORM-SPECIFIER)
+               | (~start-key~ key FORM-SPECIFIER)
+
+PHRASE = (~phrase~ positive-integer)
+
+CADENCE-TYPE = half | pac | iac | deceptive
+#+END_EXAMPLE
+
+* Scoping Rules
