@@ -47,7 +47,7 @@ CHORD-SPECIFIER = variable
                 | (- CHORD-SPECIFIER CHORD-SPECIFIER)
 
 
-SCORE = VOICE
+SCORE = VOICE ...
 
 VOICE = (~voice~ key-signature time-signature
                  VOICE-INTERNAL ...)
