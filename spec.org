@@ -1,12 +1,10 @@
 * Vocabulary
 
-- A /name/ or a /variable/ is a sequence of characters, not including a space or one of the following: ~" , ' ` ( ) [ ] { } | ; #~: 
-- A /note/ is a common music note and its octave (examples: ~A#4~, ~B♭2~, ~Bb2~,
-~C♯2~, ~c3~).
+- A /name/ or a /variable/ is a sequence of characters, not including a space or one of the following: " , ' ` ( ) [ ] { } | ; #: 
+- A /note/ is a common music note and its octave (examples: ~A#4~, ~B♭2~, ~Bb2~, ~C♯2~, ~c3~).
 - A /rest/ is the literal ~rest~ or a rest symbol.
-- A /duration/ is a positive fraction (with a power of two denominator) or
-integer.
-- A /tuplet/ is a positive integer followed by the character ~t~ (example: a triplet is ~3t~.
+- A /duration/ is a positive fraction (with a power of two denominator) or integer.
+- A /tuplet/ is a positive integer followed by the character ~t~ (example: a triplet is ~3t~).
 - A /time-signature/ is a positive fraction (with a power of two denominator).
 - A /key-signature/ is a music note.
 - A /chord-numeral/ is a musical chord roman numeral.
@@ -68,5 +66,5 @@ BEAT-THING = note
 
 * Scoping Rules
 
-(define x DEFINABLE) ...
-Binds x in ... and x can only be bound once. 
+~(define x DEFINABLE) ...~
+Binds ~x~ in ~...~ and ~x~ can only be bound once. 
