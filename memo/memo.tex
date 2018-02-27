@@ -1,0 +1,47 @@
+\documentclass{article}
+
+\usepackage{hyperref}
+
+\newcommand{\music}{\texttt{\#lang music}}
+
+\author{Gentner, Jared
+\and Kolosick, Matthew}
+\title{\music}
+\date{}
+
+\pagenumbering{gobble}
+
+\begin{document}
+\maketitle{}
+
+\section{Description}
+
+\music\ is a language designed to enable the writing and verification of Western
+classical music. The language provides a constraint sub-language for specifying
+stylistic constraints on the music being written. These include constraints on
+the overall form and on the harmonies.
+
+These constraints generate a notation hashlang that enforces the stylistic
+constraints on the piece being written. This language provides forms for writing
+multiple voices with key and time signatures.
+
+\section{Language Specification}
+
+Our specification of grammar and scoping rules is available at
+\url{https://github.ccs.neu.edu/kolosick/music/blob/master/spec.org}.
+
+\section{Milestones}
+
+\begin{enumerate}
+  \item We will write the notation language.
+  \item We will write a harmonic analyzer that handles a single key with no
+    non-chord tones.
+  \item We will then write the constraint sub-language that only enforces
+    constraints using the previously written analyzer.
+  \item We will expand the harmonic analyzer to handle key modulations.
+  \item We will then write the analyzer for form constraints integrating this
+    analysis into the constraint sub-language.
+  \item We will then expand the harmonic analysis to allow non-chord tones.
+\end{enumerate}
+
+\end{document}
