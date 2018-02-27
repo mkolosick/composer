@@ -9,25 +9,54 @@ integer.
 - A /tuplet/ is a positive integer followed by the character ~t~ (example: a triplet is ~3t~.
 - A /time-signature/ is a positive fraction (with a power of two denominator).
 - A /key-signature/ is a music note.
-
+- A /chord-numeral/ is a musical chord roman numeral.
 
 * Grammar
 
 #+BEGIN_EXAMPLE
-PROGRAM = (define variable EXPR) PROGRAM
-        | SCORE PROGRAM
+CONSTRAINT-PROGRAM = (~define~ variable DEFINABLE) ...
+                     FORM-TYPE?
+                     (~define~ variable DEFINABLE) ...
+                     HARMONIC-TYPE?
 
-EXPR = FORM
-     | variable
+DEFINABLE = FORM-EXPR
+          | CHORD-SPECIFIER
 
-SCORE = (~score~ EXPR VOICE ...)
+FORM-TYPE = #:form FORM-EXPR
+
+FORM-EXPR = variable
+          | PHRASE
+          | (~or~ FORM-EXPR FORM-EXPR ...)
+          | (~cadence~ CADENCE-TYPE FORM-EXPR)
+          | (~cadence~ CADENCE-TYPE key FORM-EXPR)
+          | (~start-key~ key FORM-EXPR)
+          | (~seq~ FORM-EXPR FORM-EXPR ...)
+
+PHRASE = (~phrase~ positive-integer)
+
+CADENCE-TYPE = half | pac | iac | deceptive
+
+HARMONIC-TYPE = #:harmonic HARMONIC-EXPR
+
+HARMONIC-EXPR = (-> CHORD-SPECIFIER CHORD-SPECIFIER)
+              | (~and~ CHORD-SPECIFIER CHORD-SPECIFIER ...)
+
+CHORD-SPECIFIER = variable
+                | CHORD-NUMERAL
+                | (CHORD-NUMERAL ...)
+                | *
+                | (+ CHORD-SPECIFIER CHORD-SPECIFIER)
+                | (- CHORD-SPECIFIER CHORD-SPECIFIER)
+
+
+SCORE = VOICE
 
 VOICE = (~voice~ key-signature time-signature
                  VOICE-INTERNAL ...)
 
-VOICE-INTERNAL = MEASURE
-               | (key-signature VOICE-INTERNAL ...)
-               | (time-signature VOICE-INTERNAL ...)
+VOICE-INTERNAL = MEASURE VOICE-INTERNAL ...
+               | key-signature VOICE-INTERNAL ...
+               | time-signature VOICE-INTERNAL ...
 
 MEASURE = (~measure~ BEAT-THING ...)
 
@@ -35,19 +64,9 @@ BEAT-THING = note
            | rest
            | (duration note)
            | (duration rest)
-
-FORM = (~form~ FORM-SPECIFIER)
-
-FORM-SPECIFIER = variable
-               | PHRASE
-               | (~or~ FORM-SPECIFIER FORM-SPECIFIER ...)
-               | (~cadence~ CADENCE-TYPE FORM-SPECIFIER)
-               | (~cadence~ CADENCE-TYPE key FORM-SPECIFIER)
-               | (~start-key~ key FORM-SPECIFIER)
-
-PHRASE = (~phrase~ positive-integer)
-
-CADENCE-TYPE = half | pac | iac | deceptive
 #+END_EXAMPLE
 
 * Scoping Rules
+
+(define x DEFINABLE) ...
+Binds x in ... and x can only be bound once. 
