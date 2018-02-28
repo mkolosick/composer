@@ -2,36 +2,64 @@
 
 \usepackage{hyperref}
 
+
+\makeatletter
+\newcommand{\makeheader}{%
+  \noindent
+  \begin{tabular}{@{}ll}
+    \ifdefined\@recipient
+      \textsc{To: } & \@recipient{} \\
+    \fi
+    \ifdefined\@from
+      \textsc{From: } & \@from{} \\
+    \fi
+    \ifdefined\@subject
+      \textsc{Subject: } & \@subject{} \\
+    \fi
+  \end{tabular}
+  \vspace{1\baselineskip}
+}
+\newcommand{\recipient}[1]{\newcommand{\@recipient}{#1}}
+\newcommand{\from}[1]{\newcommand{\@from}{#1}}
+\newcommand{\subject}[1]{\newcommand{\@subject}{#1}}
+
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+    {\z@}
+    {-1em}%
+    {\itshape}}
+\makeatother
+
 \newcommand{\music}{\texttt{\#lang music}}
 
-\author{Gentner, Jared
-\and Kolosick, Matthew}
-\title{\music}
-\date{}
+\setlength{\parindent}{0}
+\setlength{\parskip}{10pt}
+
+\recipient{Matthias Felleisen}
+\from{Jared Gentner and Matthew Kolosick}
+\subject{Design Proposal for \music}
 
 \pagenumbering{gobble}
 
 \begin{document}
-\maketitle{}
 
-\section{Description}
+\makeheader{}
 
-\music\ is a language designed to enable the writing and verification of Western
+\music{} is a language designed to enable the writing and verification of Western
 classical music. The language provides a constraint sub-language for specifying
 stylistic constraints on the music being written. These include constraints on
 the overall form and on the harmonies.
 
 These constraints generate a notation hashlang that enforces the stylistic
 constraints on the piece being written. This language provides forms for writing
-multiple voices with key and time signatures.
-
-\section{Language Specification}
+multiple voices with key and time signatures. 
+\section*{Language Specification}
 
 Our specification of grammar and scoping rules is available at
 \url{https://github.ccs.neu.edu/kolosick/music/blob/master/spec.org}.
 
-\section{Milestones}
+\section*{Milestones}
 
+We will plan to follow these steps in developing \music{}.
 \begin{enumerate}
   \item We will write the notation language.
   \item We will write a harmonic analyzer that handles a single key with no
