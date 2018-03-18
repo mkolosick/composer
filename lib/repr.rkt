@@ -1,5 +1,7 @@
 #lang racket
 
+(provide (all-defined-out))
+
 ;; A Name is one of
 ;; 'A 'B 'C 'D 'E 'F 'G
 
@@ -16,10 +18,18 @@
 ;; 'major 'minor 'augmented 'dimished
 
 ;; A pitch-class has a Name and an Accidental
-(struct pitch-class (name accidental))
+(struct pitch-class (name accidental) #:transparent)
 
 ;; a note has a pitch-class and an integer octave
-(struct note (pitch-class octave))
+(struct note (pitch-class octave) #:transparent)
+
+(define (note-name n)
+  (pitch-class-name (note-pitch-class n)))
+
+(define (note-accidental n)
+  (pitch-class-accidental (note-pitch-class n)))
+
+(struct rest ())
 
 ;; an Extension is a number and an accidental
 (struct extension (degree accidental))
@@ -27,4 +37,4 @@
 ;; a chord-number is a number in the range [1, 7],
 ;; an Accidental, a ChordType, an Inversion,
 ;; and a listof Extension
-(struct chord-number (number accidental type inversion extensions))
+(struct chord-number (number accidental type inversion extensions) #:transparent)
