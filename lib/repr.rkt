@@ -14,9 +14,6 @@
 
 ;; A ChordType is one of
 ;; 'major 'minor 'augmented 'dimished
-;; 'seventh 'major-seventh 'minor-seventh 'half-dimished
-;; 'dimished-seventh 'minor-major-seventh 'augmented-major-seventh
-;; 'augmented-seventh
 
 ;; A pitch-class has a Name and an Accidental
 (struct pitch-class (name accidental))
@@ -24,6 +21,10 @@
 ;; a note has a pitch-class and an integer octave
 (struct note (pitch-class octave))
 
+;; an Extension is a number and an accidental
+(struct extension (degree accidental))
+
 ;; a chord-number is a number in the range [1, 7],
-;; an Accidental, a ChordType, and an Inversion
-(struct chord-number (number accidental type inversion))
+;; an Accidental, a ChordType, an Inversion,
+;; and a listof Extension
+(struct chord-number (number accidental type inversion extensions))
