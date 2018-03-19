@@ -38,3 +38,8 @@
 ;; an Accidental, a ChordType, an Inversion,
 ;; and a listof Extension
 (struct chord-number (number accidental type inversion extensions) #:transparent)
+
+(struct voice (key time measures) #:transparent)
+
+;; type is 'major or 'minor
+(struct key-signature (root type))
