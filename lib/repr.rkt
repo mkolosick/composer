@@ -39,7 +39,8 @@
 ;; and a listof Extension
 (struct chord-number (number accidental type inversion extensions) #:transparent)
 
+;; a key-signature, a pair (number number), and a listof listof note
 (struct voice (key time measures) #:transparent)
 
 ;; type is 'major or 'minor
-(struct key-signature (root type))
+(struct key-signature (root type) #:transparent)
