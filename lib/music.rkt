@@ -33,13 +33,7 @@
         #'(music:voice key+ '(numerator denominator) (list measure+ ...))
         (music:voice key-type (list (syntax->datum #'numerator)
                                     (syntax->datum #'denominator))
-                     (map (λ (typed-measure)
-                            (map (λ (note)
-                                 (if (music:rest? note)
-                                     note
-                                     (key-note->note note key-type)))
-                                 (second typed-measure)))
-                          typed-measures))))]))
+                     (map second typed-measures))))]))
 
 (define-syntax measure-parser
   (syntax-parser

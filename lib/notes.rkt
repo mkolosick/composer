@@ -187,7 +187,12 @@
 
 ;; [List-of Voice] -> [List-of [List-of note]]
 (define (voices->chords voices)
-  (define voices-seq (map (λ (voice) (flatten (music:voice-measures voice)))
+  (define voices-seq (map (λ (voice)
+                            (map (λ (note)
+                                   (if (music:rest? note)
+                                       note
+                                       (key-note->note note (music:voice-key voice))))
+                                 (flatten (music:voice-measures voice))))
                           voices))
 
   (define (notes->chords voices-seq)
