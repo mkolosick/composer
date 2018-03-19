@@ -31,13 +31,15 @@
 
 (struct rest ())
 
-;; an Extension is a number and an accidental
+;; an Extension is an extension or 'none
+
+;; an extension is a number and an accidental
 (struct extension (degree accidental))
 
-;; a chord-number is a number in the range [1, 7],
+;; a chord-numeral is a number in the range [1, 7],
 ;; an Accidental, a ChordType, an Inversion,
 ;; and a listof Extension
-(struct chord-number (number accidental type inversion extensions) #:transparent)
+(struct chord-numeral (number accidental type inversion extensions) #:transparent)
 
 ;; a key-signature, a pair (number number), and a listof listof note
 (struct voice (key time measures) #:transparent)
