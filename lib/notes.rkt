@@ -6,7 +6,8 @@
 (provide note
          time-denominator
          key-signature
-         key-note->note)
+         key-note->note
+         voices->chords)
 
 ;; String -> note | rest | #f
 (define (note-string->note str)
@@ -183,3 +184,17 @@
   (define base-pitch (list-ref scale (staff-index (music:note-name note))))
   (note-add-semitones (music:note base-pitch (music:note-octave note))
                       (accidental-semitones (music:note-accidental note))))
+
+;; [List-of Voice] -> [List-of [List-of note]]
+(define (voices->chords voices)
+  (define voices-seq (map (λ (voice) (flatten (music:voice-measures voice)))
+                          voices))
+
+  (define (notes->chords voices-seq)
+    (define non-empty-seq (filter cons? voices-seq))
+    (cond
+      [(empty? non-empty-seq) empty]
+      [else (cons (map first non-empty-seq)
+                  (notes->chords (map rest non-empty-seq)))]))
+  
+  (notes->chords voices-seq))

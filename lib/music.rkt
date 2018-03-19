@@ -16,6 +16,7 @@
   (syntax-parser
     [(_ voice ...)
      (define typed-voices (stx-map type-of #'(voice ...)))
+     (println (voices->chords (map second typed-voices)))
      (with-syntax ([(voice+ ...) (map first typed-voices)])
        #'(#%module-begin (provide score)
                          (define score (list voice+ ...))
