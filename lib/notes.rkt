@@ -5,14 +5,15 @@
 
 (provide note
          time-denominator
-         key-signature)
+         key-signature
+         key-note->note)
 
 ;; String -> note | rest | #f
 (define (note-string->note str)
   (match str
     ["rest" (music:rest)]
     [(regexp #rx"^([a-gA-G])(.*)" (list _ note-value rest))
-     (define note-symbol (string->symbol note-value))
+     (define note-symbol (string->symbol (string-upcase note-value)))
      (match rest
        [(regexp #rx"^(##|#|♯♯|♯|bb|b|♭♭|♭|nat|♮)?(.*)" (list _ accidental-value rest))
         (define accidental-symbol (if accidental-value
@@ -62,19 +63,20 @@
            "invalid time signature"))
 
 (define-syntax-class key-signature
-  #:attributes ()
+  #:attributes (key-signature)
   #:datum-literals (Fb F♭ Cb C♭ Gb G♭ Db D♭ Ab A♭ Eb E♭ Bb B♭
                        F C G D A E B
                        F# F♯ C# C♯ G# G♯ D# D♯ A# A♯ E# E♯ B# B♯
                        fb f♭ cb c♭ gb g♭ db d♭ ab a♭ eb e♭ bb b♭
                        f c g d a e b
                        f# f♯ c# c♯ g# g♯ d# d♯ a# a♯ e# e♯ b# b♯)
-  (pattern (~or Fb F♭ Cb C♭ Gb G♭ Db D♭ Ab A♭ Eb E♭ Bb B♭
-                F C G D A E B
-                F# F♯ C# C♯ G# G♯ D# D♯ A# A♯ E# E♯ B# B♯
-                fb f♭ cb c♭ gb g♭ db d♭ ab a♭ eb e♭ bb b♭
-                f c g d a e b
-                f# f♯ c# c♯ g# g♯ d# d♯ a# a♯ e# e♯ b# b♯)))
+  (pattern (~and key (~or Fb F♭ Cb C♭ Gb G♭ Db D♭ Ab A♭ Eb E♭ Bb B♭
+                          F C G D A E B
+                          F# F♯ C# C♯ G# G♯ D# D♯ A# A♯ E# E♯ B# B♯
+                          fb f♭ cb c♭ gb g♭ db d♭ ab a♭ eb e♭ bb b♭
+                          f c g d a e b
+                          f# f♯ c# c♯ g# g♯ d# d♯ a# a♯ e# e♯ b# b♯))
+           #:attr key-signature (key-symbol->key (syntax->datum #'key))))
 
 (define note-seq
   (list (music:pitch-class 'C 'none)
@@ -169,9 +171,9 @@
                   ['major '(0 2 4 5 7 9 11)]
                   ['minor '(0 2 3 5 7 8 10)]))
   (rotate-right (map (λ (semitones)
-                      (pitch-add-semitones (music:key-signature-root key) semitones))
-                    steps)
-               (staff-index (music:pitch-class-name (music:key-signature-root key)))))
+                       (pitch-add-semitones (music:key-signature-root key) semitones))
+                     steps)
+                (staff-index (music:pitch-class-name (music:key-signature-root key)))))
 
 
 ;; note key-signature -> note
