@@ -132,16 +132,27 @@
   (define key-root (music:pitch-class note-name accidental))
   (music:key-signature key-root key-type))
 
+;; [List-of A] Number -> [List-of A]
+(define (rotate-left xs n)
+  (append (list-tail xs n) (take xs n)))
+
+;; [List-of A] Number -> [List-of A]
+(define (rotate-right xs n)
+  (rotate-left xs (- (length xs) n)))
+
 ;; key-signature -> Scale
 (define (key-scale key)
   (define steps (match (music:key-signature-type key)
                   ['major '(0 2 4 5 7 9 11)]
                   ['minor '(0 2 3 5 7 8 10)]))
-  (sort (map (λ (semitones)
+  (rotate-right
+   (map (λ (semitones)
                (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
                                     semitones))
              steps)
-        <))
+   (staff-index (music:pitch-class-name (music:key-signature-root key)))))
+
+(define c-major-scale (key-scale (music:key-signature (music:pitch-class 'C 'none) 'major)))
 
 ;; note key-signature -> raw-note
 ;; converts a note relative to a key to a raw note
@@ -149,23 +160,26 @@
   (define scale (key-scale key))
   (define base-pitch (list-ref scale (staff-index (music:note-name note))))
   (note-add-semitones (music:raw-note base-pitch (music:note-octave note))
-                      (accidental-semitones (music:note-accidental note))))
+                      (if (equal? (music:note-accidental note) 'natural)
+                          (let ([scale-difference (map - c-major-scale scale)])
+                            (list-ref scale-difference (staff-index (music:note-name note))))
+                          (accidental-semitones (music:note-accidental note)))))
 
 ;; [List-of Voice] -> [List-of Chord]
 (define (voices->chords voices)
-    (define voices-seq (map (λ (voice)
-                              (map (λ (note)
-                                     (if (music:rest? note)
-                                         note
-                                         (note-in-key->raw-note note (music:voice-key voice))))
-                                   (flatten (music:voice-measures voice))))
-                            voices))
+  (define voices-seq (map (λ (voice)
+                            (map (λ (note)
+                                   (if (music:rest? note)
+                                       note
+                                       (note-in-key->raw-note note (music:voice-key voice))))
+                                 (flatten (music:voice-measures voice))))
+                          voices))
 
-    (define (notes->chords voices-seq)
-      (define non-empty-seq (filter cons? voices-seq))
-      (cond
-        [(empty? non-empty-seq) empty]
-        [else (cons (list->set (filter music:raw-note? (map first non-empty-seq)))
-                    (notes->chords (map rest non-empty-seq)))]))
+  (define (notes->chords voices-seq)
+    (define non-empty-seq (filter cons? voices-seq))
+    (cond
+      [(empty? non-empty-seq) empty]
+      [else (cons (list->set (filter music:raw-note? (map first non-empty-seq)))
+                  (notes->chords (map rest non-empty-seq)))]))
   
-    (notes->chords voices-seq))
+  (notes->chords voices-seq))
