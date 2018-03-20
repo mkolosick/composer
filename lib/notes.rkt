@@ -1,41 +1,87 @@
 #lang racket
 
 (require (prefix-in music: "repr.rkt")
-         syntax/parse)
+         syntax/parse
+         (prefix-in p: parsack))
 
 (provide note
          time-denominator
          key-signature
          voices->chords)
 
+(define note-name-parser
+  (p:parser-compose (note-name <- (p:oneOf "abcdefgABCDEFG"))
+                    (p:return (string->symbol
+                               (list->string
+                                (list (char-upcase note-name)))))))
+
+(define flat-component-parser
+  (p:<or> (p:char #\b)
+          (p:char #\♭)))
+
+(define flat-parser
+  (p:parser-compose flat-component-parser
+                    (p:<any> (p:try (p:>> flat-component-parser
+                                          (p:return 'flatflat)))
+                             (p:return 'flat))))
+
+(define sharp-component-parser
+  (p:<or> (p:char #\#)
+          (p:char #\♯)))
+
+(define sharp-parser
+  (p:parser-compose sharp-component-parser
+                    (p:<any> (p:try (p:>> sharp-component-parser
+                                          (p:return 'sharpsharp)))
+                             (p:return 'sharp))))
+
+(define nat-parser
+  (p:parser-compose (p:<or> (p:string "♮")
+                            (p:string "nat"))
+                    (p:return 'nat)))
+
+(define accidental-parser
+  (p:<any>               
+   (p:<or> flat-parser
+           sharp-parser
+           nat-parser)
+   (p:return 'none)))
+
+(define octave-parser
+  (p:parser-compose (octave-string <- (p:many1 p:$digit))
+                    (p:return (string->number (list->string octave-string)))))
+
+(define note-parser
+  (p:parser-compose (note-name <- note-name-parser)
+                    (accidental <- accidental-parser)
+                    (octave <- octave-parser)
+                    (p:return (music:note (music:pitch-class note-name accidental) octave))))
+
+(define note-string-parser
+  (p:<or>
+   (p:try (p:parser-compose
+           (result <- (p:<or> (p:>> (p:string "rest")
+                                    (p:return (music:rest)))
+                              note-parser))
+           p:$eof
+           (p:return result)))
+   (p:return #f)))
+
 ;; String -> note | rest | #f
 (define (note-string->note str)
-  (match str
-    ["rest" (music:rest)]
-    [(regexp #rx"^([a-gA-G])(.*)" (list _ note-value rest))
-     (define note-symbol (string->symbol (string-upcase note-value)))
-     (match rest
-       [(regexp #rx"^(##|#|♯♯|♯|bb|b|♭♭|♭|nat|♮)?(.*)" (list _ accidental-value rest))
-        (define accidental-symbol (if accidental-value
-                                      (accidental-string->symbol accidental-value)
-                                      'none))
-        (define note-part (music:pitch-class note-symbol accidental-symbol))
-        (match rest
-          [(regexp #rx"^([0-9]+)$" (list _ octave-string))
-           (music:note note-part (string->number octave-string))]
-          [_ #f])]
-       [_ #f])]
-    [_ #f]))
+  (p:parse-result note-string-parser str))
 
-;; String -> Accidental
-(define (accidental-string->symbol str)
-  (match str
-    [(or "#" "♯") 'sharp]
-    [(or "b" "♭") 'flat]
-    [(or "nat" "♮") 'natural]
-    [(or "##" "♯♯") 'sharpsharp]
-    [(or "bb" "♭♭") 'flatflat]
-    [_ 'none]))
+;; Symbol -> key-signature
+(define (key-symbol->key key-sym)
+  (define key-string (symbol->string key-sym))
+  (define note-char (list-ref (string->list key-string) 0))
+  (define key-type (if (char-upper-case? note-char)
+                       'major
+                       'minor))
+  (define note-name (string->symbol (string-upcase (substring key-string 0 1))))
+  (define accidental (p:parse-result accidental-parser (substring key-string 1)))
+  (define key-root (music:pitch-class note-name accidental))
+  (music:key-signature key-root key-type))
   
 (define-syntax-class note
   #:opaque
@@ -120,18 +166,6 @@
                   (+ (music:raw-note-octave note)
                      (floor (/ (+ pitch num-semi) 12)))))
 
-;; Symbol -> key-signature
-(define (key-symbol->key key-sym)
-  (define key-string (symbol->string key-sym))
-  (define note-char (list-ref (string->list key-string) 0))
-  (define key-type (if (char-upper-case? note-char)
-                       'major
-                       'minor))
-  (define note-name (string->symbol (string-upcase (substring key-string 0 1))))
-  (define accidental (accidental-string->symbol (substring key-string 1)))
-  (define key-root (music:pitch-class note-name accidental))
-  (music:key-signature key-root key-type))
-
 ;; [List-of A] Number -> [List-of A]
 (define (rotate-left xs n)
   (append (list-tail xs n) (take xs n)))
@@ -147,9 +181,9 @@
                   ['minor '(0 2 3 5 7 8 10)]))
   (rotate-right
    (map (λ (semitones)
-               (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
-                                    semitones))
-             steps)
+          (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
+                               semitones))
+        steps)
    (staff-index (music:pitch-class-name (music:key-signature-root key)))))
 
 (define c-major-scale (key-scale (music:key-signature (music:pitch-class 'C 'none) 'major)))
