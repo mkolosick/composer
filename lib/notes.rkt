@@ -6,7 +6,6 @@
 (provide note
          time-denominator
          key-signature
-         key-note->note
          voices->chords)
 
 ;; String -> note | rest | #f
@@ -47,15 +46,6 @@
            #:fail-unless note-result (format "invalid note: ~a" note-string)
            #:attr note note-result))
 
-#;(define (note->syntax stx note-struct)
-    (if (music:rest? note-struct)
-        #'(music:rest)
-        (with-syntax ([note-name (datum->syntax #'stx (music:note-name note-struct))]
-                      [note-accidental (datum->syntax #'stx (music:note-accidental note-struct))]
-                      [note-octave (datum->syntax #'stx (music:note-octave note-struct))])
-          #'(music:note (music:pitch-class 'note-name 'note-accidental)
-                        note-octave))))
-
 (define-syntax-class time-denominator
   #:attributes ()
   (pattern time:exact-positive-integer
@@ -93,9 +83,16 @@
         (music:pitch-class 'A 'sharp)
         (music:pitch-class 'B 'none)))
 
+;; pitch-class -> PitchNumber
+(define (pitch-class->PitchNumber pitch-class)
+  (define base-index (index-of note-seq (music:pitch-class
+                                         (music:pitch-class-name pitch-class)
+                                         'none)))
+  (+ base-index (accidental-semitones (music:pitch-class-accidental pitch-class))))
+
 ;; Note -> Number
 (define (staff-index note-name)
-  (index-of '(C D E F G A B C) note-name))
+  (index-of '(C D E F G A B) note-name))
 
 ;; Accidental -> Number
 (define (accidental-semitones accidental)
@@ -107,44 +104,21 @@
     ['flat -1]
     ['flatflat -2]))
 
-;; pitch-class -> pitch-class
-(define (normalize-pitch pitch-class)
-  (define base-index (index-of note-seq (music:pitch-class
-                                         (music:pitch-class-name pitch-class)
-                                         'none)))
-  (define pitch-index (+ base-index
-                         (accidental-semitones (music:pitch-class-accidental pitch-class))))
-  (list-ref note-seq (modulo pitch-index (length note-seq))))
-
 ;; pitch-class pitch-class -> Boolean
 (define (pitch-equal? p1 p2)
-  (equal? (normalize-pitch p1) (normalize-pitch p2)))
+  (equal? (pitch-class->PitchNumber p1) (pitch-class->PitchNumber p2)))
 
-;; pitch-class Number -> pitch-class
-(define (pitch-add-semitones pitch-class num-semi)
-  (define normalized (normalize-pitch pitch-class))
-  (define pitch-index (index-of note-seq normalized))
-  (list-ref note-seq
-            (modulo (+ pitch-index num-semi)
-                    (length note-seq))))
+;; PitchNumber Integer -> PitchNumber
+(define (pitch-add-semitones pitch-number num-semi)
+  (modulo (+ pitch-number num-semi)
+          (length note-seq)))
 
-;; note Number -> note
+;; raw-note Integer -> raw-note
 (define (note-add-semitones note num-semi)
-  (define base-index (index-of note-seq (music:pitch-class
-                                         (music:note-name note)
-                                         'none)))
-  (define accidental-distance (accidental-semitones (music:note-accidental note)))
-  (define start-octave
-    (cond
-      [(< (+ base-index accidental-distance) 0)
-       (- (music:note-octave note) 1)]
-      [(> (+ base-index accidental-distance) (length note-seq))
-       (+ (music:note-octave note) 1)]
-      [else (music:note-octave note)]))
-  (define normalized-pitch (normalize-pitch (music:note-pitch-class note)))
-  (define-values (octaves-up semitones-up) (quotient/remainder num-semi (length note-seq)))
-  (music:note (pitch-add-semitones normalized-pitch semitones-up)
-              (+ start-octave octaves-up)))
+  (define pitch (music:raw-note-pitch note))
+  (music:raw-note (pitch-add-semitones pitch num-semi)
+                  (+ (music:raw-note-octave note)
+                     (floor (/ (+ pitch num-semi) 12)))))
 
 ;; Symbol -> key-signature
 (define (key-symbol->key key-sym)
@@ -158,48 +132,40 @@
   (define key-root (music:pitch-class note-name accidental))
   (music:key-signature key-root key-type))
 
-;; [List-of A] Number -> [List-of A]
-(define (rotate-left xs n)
-  (append (list-tail xs n) (take xs n)))
-
-;; [List-of A] Number -> [List-of A]
-(define (rotate-right xs n)
-  (rotate-left xs (- (length xs) n)))
-
 ;; key-signature -> Scale
 (define (key-scale key)
   (define steps (match (music:key-signature-type key)
                   ['major '(0 2 4 5 7 9 11)]
                   ['minor '(0 2 3 5 7 8 10)]))
-  (rotate-right (map (λ (semitones)
-                       (pitch-add-semitones (music:key-signature-root key) semitones))
-                     steps)
-                (staff-index (music:pitch-class-name (music:key-signature-root key)))))
+  (sort (map (λ (semitones)
+               (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
+                                    semitones))
+             steps)
+        <))
 
-
-;; note key-signature -> note
+;; note key-signature -> raw-note
 ;; converts a note relative to a key to a raw note
-(define (key-note->note note key)
+(define (note-in-key->raw-note note key)
   (define scale (key-scale key))
   (define base-pitch (list-ref scale (staff-index (music:note-name note))))
-  (note-add-semitones (music:note base-pitch (music:note-octave note))
+  (note-add-semitones (music:raw-note base-pitch (music:note-octave note))
                       (accidental-semitones (music:note-accidental note))))
 
-;; [List-of Voice] -> [List-of [List-of note]]
+;; [List-of Voice] -> [List-of Chord]
 (define (voices->chords voices)
-  (define voices-seq (map (λ (voice)
-                            (map (λ (note)
-                                   (if (music:rest? note)
-                                       note
-                                       (key-note->note note (music:voice-key voice))))
-                                 (flatten (music:voice-measures voice))))
-                          voices))
+    (define voices-seq (map (λ (voice)
+                              (map (λ (note)
+                                     (if (music:rest? note)
+                                         note
+                                         (note-in-key->raw-note note (music:voice-key voice))))
+                                   (flatten (music:voice-measures voice))))
+                            voices))
 
-  (define (notes->chords voices-seq)
-    (define non-empty-seq (filter cons? voices-seq))
-    (cond
-      [(empty? non-empty-seq) empty]
-      [else (cons (map first non-empty-seq)
-                  (notes->chords (map rest non-empty-seq)))]))
+    (define (notes->chords voices-seq)
+      (define non-empty-seq (filter cons? voices-seq))
+      (cond
+        [(empty? non-empty-seq) empty]
+        [else (cons (list->set (filter music:raw-note? (map first non-empty-seq)))
+                    (notes->chords (map rest non-empty-seq)))]))
   
-  (notes->chords voices-seq))
+    (notes->chords voices-seq))
