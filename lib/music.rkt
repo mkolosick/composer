@@ -24,29 +24,32 @@
 
 (define-syntax voice
   (syntax-parser
-    [(_ key numerator:exact-positive-integer denominator:time-denominator (note-thing ...) ...)
+    [(~and voice (_ key numerator:exact-positive-integer denominator:time-denominator (note-thing ...) ...))
      (match-define (list key+ key-type) (type-of #'(key-parser key)))
      (define typed-measures (stx-map type-of #'((measure-parser note-thing ...) ...)))
      (with-syntax ([(measure+ ...) (map first typed-measures)]
                    [key+ key+])
        (assign-type
         #'(music:voice key+ '(numerator denominator) (list measure+ ...))
-        (music:voice key-type (list (syntax->datum #'numerator)
+        (music:voice-t key-type (list (syntax->datum #'numerator)
                                     (syntax->datum #'denominator))
-                     (map second typed-measures))))]))
+                     (map second typed-measures)
+                     #'voice)))]))
 
 (define-syntax measure-parser
   (syntax-parser
-    [(_ n ...)
+    [(~and measure (_ n ...))
      (define typed-notes (stx-map type-of #'((note-parser n) ...)))
      (with-syntax ([(n+ ...) (map first typed-notes)])
-       (assign-type #'(list n+ ...) (map second typed-notes)))]))
+       (assign-type #'(music:measure (list n+ ...))
+                    (music:measure-t (map second typed-notes)
+                                     #'measure)))]))
 
 (define-syntax note-parser
     (syntax-parser
       [(_ n:note)
        (if (music:rest? (attribute n.note))
-           (assign-type #'(music:rest) (music:rest))
+           (assign-type #'(music:rest) (music:rest-t #'n))
            (with-syntax ([note-name (datum->syntax #'n (music:note-name (attribute n.note)))]
                          [note-accidental (datum->syntax #'n (music:note-accidental (attribute n.note)))]
                          [note-octave (datum->syntax #'n (music:note-octave (attribute n.note)))])

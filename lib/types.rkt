@@ -2,7 +2,8 @@
 
 (provide assign-type
          get-type
-         type-of)
+         type-of
+         blame)
 
 (define TYPE-TAG 'music-type)
 
@@ -17,9 +18,11 @@
 (define (get-type e)
   (syntax-property e TYPE-TAG))
 
- ; type-of : Stx -> [List Term Type]
- ; Computes a Type and Term from a given Stx.
+;; type-of : Stx -> [List Term Type]
+;; Computes a Type and Term from a given Stx.
 (define (type-of e)
   (define e+ (local-expand e 'expression null))
   (list e+ (get-type e+)))
 
+(define (blame stx msg)
+  (raise-syntax-error 'music msg stx))

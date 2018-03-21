@@ -13,6 +13,7 @@
 
 ;; a raw-note is a PitchNumber and an integer octave
 (struct raw-note (pitch octave) #:transparent)
+(struct raw-note-t raw-note (stx))
 
 ;; A Scale is a list-of PitchNumber
 
@@ -20,9 +21,11 @@
 
 ;; A pitch-class has a Name and an Accidental
 (struct pitch-class (name accidental) #:transparent)
+(struct pitch-class-t pitch-class (stx))
 
 ;; a note has a pitch-class and an integer octave
 (struct note (pitch-class octave) #:transparent)
+(struct note-t note (stx))
 
 (define (note-name n)
   (pitch-class-name (note-pitch-class n)))
@@ -31,9 +34,16 @@
   (pitch-class-accidental (note-pitch-class n)))
 
 (struct rest ())
+(struct rest-t rest (stx))
 
-;; a key-signature, a pair (number number), and a listof listof note
+;; a key-signature, a pair (number number), and a listof measure
 (struct voice (key time measures) #:transparent)
+(struct voice-t voice (stx))
+
+;; a [List-of note]
+(struct measure (notes) #:transparent)
+(struct measure-t measure (stx))
 
 ;; type is 'major or 'minor
 (struct key-signature (root type) #:transparent)
+(struct key-signature-t key-signature (stx))

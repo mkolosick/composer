@@ -51,28 +51,30 @@
   (p:parser-compose (octave-string <- (p:many1 p:$digit))
                     (p:return (string->number (list->string octave-string)))))
 
-(define note-parser
+(define (make-note-parser stx)
   (p:parser-compose (note-name <- note-name-parser)
                     (accidental <- accidental-parser)
                     (octave <- octave-parser)
-                    (p:return (music:note (music:pitch-class note-name accidental) octave))))
+                    (p:return (music:note-t (music:pitch-class note-name accidental) octave stx))))
 
-(define note-string-parser
+(define (make-note-string-parser stx)
   (p:<or>
    (p:try (p:parser-compose
            (result <- (p:<or> (p:>> (p:string "rest")
-                                    (p:return (music:rest)))
-                              note-parser))
+                                    (p:return (music:rest-t stx)))
+                              (make-note-parser stx)))
            p:$eof
            (p:return result)))
    (p:return #f)))
 
-;; String -> note | rest | #f
-(define (note-string->note str)
-  (p:parse-result note-string-parser str))
+;; Stx -> note | rest | #f
+(define (note-stx->note note-stx)
+  (p:parse-result (make-note-string-parser note-stx)
+                  (symbol->string (syntax->datum note-stx))))
 
-;; Symbol -> key-signature
-(define (key-symbol->key key-sym)
+;; Stx -> key-signature
+(define (key-stx->key key-stx)
+  (define key-sym (syntax->datum key-stx))
   (define key-string (symbol->string key-sym))
   (define note-char (list-ref (string->list key-string) 0))
   (define key-type (if (char-upper-case? note-char)
@@ -80,16 +82,15 @@
                        'minor))
   (define note-name (string->symbol (string-upcase (substring key-string 0 1))))
   (define accidental (p:parse-result accidental-parser (substring key-string 1)))
-  (define key-root (music:pitch-class note-name accidental))
-  (music:key-signature key-root key-type))
+  (define key-root (music:pitch-class-t note-name accidental key-stx))
+  (music:key-signature-t key-root key-type key-stx))
   
 (define-syntax-class note
   #:opaque
   #:attributes (note)
   (pattern note-value:id
-           #:do [(define note-string (symbol->string (syntax->datum #'note-value)))
-                 (define note-result (note-string->note note-string))]
-           #:fail-unless note-result (format "invalid note: ~a" note-string)
+           #:do [(define note-result (note-stx->note #'note-value))]
+           #:fail-unless note-result (format "invalid note: ~a" #'note-value)
            #:attr note note-result))
 
 (define-syntax-class time-denominator
@@ -113,7 +114,7 @@
                           fb f♭ cb c♭ gb g♭ db d♭ ab a♭ eb e♭ bb b♭
                           f c g d a e b
                           f# f♯ c# c♯ g# g♯ d# d♯ a# a♯ e# e♯ b# b♯))
-           #:attr key-signature (key-symbol->key (syntax->datum #'key))))
+           #:attr key-signature (key-stx->key #'key)))
 
 (define note-seq
   (list (music:pitch-class 'C 'none)
@@ -193,20 +194,26 @@
 (define (note-in-key->raw-note note key)
   (define scale (key-scale key))
   (define base-pitch (list-ref scale (staff-index (music:note-name note))))
-  (note-add-semitones (music:raw-note base-pitch (music:note-octave note))
+  (define raw-note-result (note-add-semitones (music:raw-note base-pitch (music:note-octave note))
                       (if (equal? (music:note-accidental note) 'natural)
                           (let ([scale-difference (map - c-major-scale scale)])
                             (list-ref scale-difference (staff-index (music:note-name note))))
                           (accidental-semitones (music:note-accidental note)))))
 
-;; [List-of Voice] -> [List-of Chord]
+  (if (music:note-t? note)
+      (music:raw-note-t (music:raw-note-pitch raw-note-result)
+                        (music:raw-note-octave raw-note-result)
+                        (music:note-t-stx note))
+      raw-note-result))
+
+;; [List-of voice] -> [List-of Chord]
 (define (voices->chords voices)
   (define voices-seq (map (λ (voice)
                             (map (λ (note)
                                    (if (music:rest? note)
                                        note
                                        (note-in-key->raw-note note (music:voice-key voice))))
-                                 (flatten (music:voice-measures voice))))
+                                 (flatten (map music:measure-notes (music:voice-measures voice)))))
                           voices))
 
   (define (notes->chords voices-seq)
