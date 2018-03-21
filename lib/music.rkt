@@ -5,7 +5,8 @@
                      (prefix-in music: "repr.rkt")
                      syntax/stx
                      "types.rkt"
-                     racket)
+                     racket
+                     "constraints.rkt")
          (prefix-in music: "repr.rkt"))
 
 (provide
@@ -16,7 +17,7 @@
   (syntax-parser
     [(_ voice ...)
      (define typed-voices (stx-map type-of #'(voice ...)))
-     (println (voices->chords (map second typed-voices)))
+     #;(println (voices->chords (map second typed-voices)))
      (with-syntax ([(voice+ ...) (map first typed-voices)])
        #'(#%module-begin (provide score)
                          (define score (list voice+ ...))
@@ -24,21 +25,22 @@
 
 (define-syntax voice
   (syntax-parser
-    [(~and voice (_ key numerator:exact-positive-integer denominator:time-denominator (note-thing ...) ...))
+    [(~and voice (_ key numerator:exact-positive-integer denominator:time-denominator measure ...))
      (match-define (list key+ key-type) (type-of #'(key-parser key)))
-     (define typed-measures (stx-map type-of #'((measure-parser note-thing ...) ...)))
+     (define typed-measures (stx-map type-of #'((measure-parser measure) ...)))
+     (define time-signature (list (syntax->datum #'numerator) (syntax->datum #'denominator)))
+     (map (λ (typed-measure) (check-measure-length (second typed-measure) time-signature)) typed-measures)
      (with-syntax ([(measure+ ...) (map first typed-measures)]
                    [key+ key+])
        (assign-type
         #'(music:voice key+ '(numerator denominator) (list measure+ ...))
-        (music:voice-t key-type (list (syntax->datum #'numerator)
-                                    (syntax->datum #'denominator))
+        (music:voice-t key-type time-signature
                      (map second typed-measures)
                      #'voice)))]))
 
 (define-syntax measure-parser
   (syntax-parser
-    [(~and measure (_ n ...))
+    [(_ (~and measure (n ...)))
      (define typed-notes (stx-map type-of #'((note-parser n) ...)))
      (with-syntax ([(n+ ...) (map first typed-notes)])
        (assign-type #'(music:measure (list n+ ...))
