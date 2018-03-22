@@ -6,5 +6,5 @@
 (voice C 4 4
        (e5 e5 rest e5))
 
-(voice C 4 4
-       (g5 g5 rest g5))
+(voice C 4 8
+       (g5 g5 g5 g5) (rest rest g5 g5))

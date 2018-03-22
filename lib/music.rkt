@@ -25,7 +25,9 @@
           (syntax-parser
             [(_ voice (... ...))
              (define typed-voices (stx-map type-of #'(voice (... ...))))
-             #;(println (voices->chords (map second typed-voices)))
+
+             (println (voices->chords (map second typed-voices)))
+
              (with-syntax ([(voice+ (... ...)) (map first typed-voices)])
                #'(#%module-begin (provide score)
                                  (define score (list voice+ (... ...)))
@@ -36,7 +38,7 @@
             [(~and voice (_ key numerator:exact-positive-integer denominator:time-denominator measure (... ...)))
              (match-define (list key+ key-type) (type-of #'(key-parser key)))
              (define typed-measures (stx-map type-of #'((measure-parser measure) (... ...))))
-             (define time-signature (list (syntax->datum #'numerator) (syntax->datum #'denominator)))
+             (define time-signature (music:time-signature (syntax->datum #'numerator) (syntax->datum #'denominator)))
 
              (for ([measure-checker measure-checkers])
                   (for ([measure (map second typed-measures)])
@@ -45,7 +47,7 @@
              (with-syntax ([(measure+ (... ...)) (map first typed-measures)]
                            [key+ key+])
                (assign-type
-                #'(music:voice key+ '(numerator denominator) (list measure+ (... ...)))
+                #'(music:voice key+ (music:time-signature 'numerator 'denominator) (list measure+ (... ...)))
                 (music:voice-t key-type time-signature
                                (map second typed-measures)
                                #'voice)))])))]))
