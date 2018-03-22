@@ -5,9 +5,11 @@
 
 (provide (all-defined-out))
 
-;; measure-t TimeSignature -> Void
+;; a MeasureChecker is a function measure-t TimeSignature key-signature -> Void
+
+;; MeasureChecker
 ;; blames the measure when the measure is too long
-(define (check-measure-length measure time-signature)
+(define (check-measure-length measure time-signature key-signature)
   (define measure-length (length (music:measure-notes measure)))
   (define num-beats (first time-signature))
   (define stx (music:measure-t-stx measure))

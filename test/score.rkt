@@ -1,4 +1,4 @@
-#lang s-exp "../lib/music.rkt"
+#lang s-exp "form.rkt"
 
 (voice C 4 4
        (c4 c4 rest c4))
