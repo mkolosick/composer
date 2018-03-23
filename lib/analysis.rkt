@@ -1,7 +1,8 @@
 #lang racket
 
 (require (prefix-in music: "repr.rkt")
-         "types.rkt")
+         "types.rkt"
+         "notes.rkt")
 
 (provide (all-defined-out))
 
@@ -17,31 +18,10 @@
   (when (> measure-length num-beats) (blame stx "measure too long"))
   (when (< measure-length num-beats) (blame stx "measure too short")))
 
-(define (chord->figure chord)
-  (define (get-root chord acc)
-    (cond
-      [(set-empty? chord) acc]
-      [else
-       (define note (set-first chord))
-       (get-root (set-rest chord)
-                 (cond
-                   [(not acc) note]
-                   [(= (music:raw-note-octave acc) (music:raw-note-octave note))
-                    (if
-                     (< (music:raw-note-pitch note)
-                        (music:raw-note-pitch acc))
-                     note
-                     acc)]
-                   [(> (music:raw-note-octave acc) (music:raw-note-octave note)) note]
-                   [else acc]))]))
-  (define root (get-root chord #f))
-  (define root-pitch (music:raw-note-pitch root))
-  (define chord-no-root (set->list (set-remove chord root)))
-  (list root-pitch (sort (map (λ (note) (modulo (- (music:raw-note-pitch note) root-pitch) 12)) chord-no-root) <)))
-
-;; [Listof Chord] [Listof (list ChordNumber ChordNumber)]
-;; [Listof (list ChordNumber ChordNumber)]
-;; [Listof (list NoteNumber [Listof NoteNumber])] -> Void
+;; [Listof Chord]
+;; [Listof Transition]
+;; [Listof Transition]
+;; Universe -> Void
 (define (check-harmonies chords transitions pivots universe)
   (define figures (map chord->figure chords))
   (define proto-numerals
@@ -55,8 +35,8 @@
     (map (λ (numeral-list)
            (list (first numeral-list)
                  (map (λ (proto-numeral)
-                        (define roman (assoc proto-numeral universe))
-                        (and roman (second roman)))
+                        (define symbol (assoc proto-numeral universe))
+                        (and symbol (second symbol)))
                       (second numeral-list)))) proto-numerals))
 
   (define (correct? numerals)
