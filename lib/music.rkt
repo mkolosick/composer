@@ -25,9 +25,10 @@
           (syntax-parser
             [(_ voice (... ...))
              (define typed-voices (stx-map type-of #'(voice (... ...))))
+             (define voices (map second typed-voices))
 
-             (println (voices->chords (map second typed-voices)))
-             (check-harmonies (voices->chords (map second typed-voices)) 
+             (println (voices->chords voices))
+             (check-harmonies (voices->chords voices) 
                               '(('I 'ii) ('ii 'V) ('V 'I)) 
                               '() 
                               '(((0 (4 7)) 'I) 

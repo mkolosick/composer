@@ -182,10 +182,11 @@
                   ['major '(0 2 4 5 7 9 11)]
                   ['minor '(0 2 3 5 7 8 10)]))
 
-   (map (λ (semitones)
-          (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
-                               semitones))
-        steps))
+  (rotate-right (map (λ (semitones)
+                       (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
+                                            semitones))
+                     steps)
+                (staff-index (music:pitch-class-name (music:key-signature-root key)))))
 
 (define c-major-scale (key-scale (music:key-signature (music:pitch-class 'C 'none) 'major)))
 
@@ -195,10 +196,10 @@
   (define scale (key-scale key))
   (define base-pitch (list-ref scale (staff-index (music:note-name note))))
   (define raw-note-result (note-add-semitones (music:raw-note base-pitch (music:note-octave note))
-                      (if (equal? (music:note-accidental note) 'natural)
-                          (let ([scale-difference (map - c-major-scale scale)])
-                            (list-ref scale-difference (staff-index (music:note-name note))))
-                          (accidental-semitones (music:note-accidental note)))))
+                                              (if (equal? (music:note-accidental note) 'natural)
+                                                  (let ([scale-difference (map - c-major-scale scale)])
+                                                    (list-ref scale-difference (staff-index (music:note-name note))))
+                                                  (accidental-semitones (music:note-accidental note)))))
 
   (if (music:note-t? note)
       (music:raw-note-t (music:raw-note-pitch raw-note-result)
@@ -209,18 +210,18 @@
 ;; [List-of voice] -> [List-of Chord]
 (define (voices->chords voices)
   (define smallest-beat-size (apply max (map (λ (voice) (music:time-signature-size (music:voice-time voice)))
-                                  voices)))
+                                             voices)))
 
   (define (voice->note-seq voice)
     (define note-multiplier (/ smallest-beat-size (music:time-signature-size (music:voice-time voice))))
     (flatten (map (λ (measure)
-           (map (λ (note)
-                  (define raw-note (if (music:rest? note)
-                                       note
-                                       (note-in-key->raw-note note (music:voice-key voice))))
-                  (make-list note-multiplier raw-note))
-                (music:measure-notes measure)))
-         (music:voice-measures voice))))
+                    (map (λ (note)
+                           (define raw-note (if (music:rest? note)
+                                                note
+                                                (note-in-key->raw-note note (music:voice-key voice))))
+                           (make-list note-multiplier raw-note))
+                         (music:measure-notes measure)))
+                  (music:voice-measures voice))))
 
   (define voices-seq (map voice->note-seq voices))
 
