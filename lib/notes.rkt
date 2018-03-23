@@ -7,6 +7,7 @@
 (provide note
          time-denominator
          key-signature
+         key-scale
          voices->chords)
 
 (define note-name-parser
@@ -180,12 +181,11 @@
   (define steps (match (music:key-signature-type key)
                   ['major '(0 2 4 5 7 9 11)]
                   ['minor '(0 2 3 5 7 8 10)]))
-  (rotate-right
+
    (map (λ (semitones)
           (pitch-add-semitones (pitch-class->PitchNumber (music:key-signature-root key))
                                semitones))
-        steps)
-   (staff-index (music:pitch-class-name (music:key-signature-root key)))))
+        steps))
 
 (define c-major-scale (key-scale (music:key-signature (music:pitch-class 'C 'none) 'major)))
 

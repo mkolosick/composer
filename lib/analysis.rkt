@@ -15,21 +15,10 @@
   (when (> measure-length num-beats) (blame stx "measure too long"))
   (when (< measure-length num-beats) (blame stx "measure too short")))
 
-(define major '(0 2 2 1 2 2 2))
-(define minor '(0 2 1 2 2 1 2))
-
-(define (scan f base values)
-  (if (null? values) values (cons (f base (first values)) (scan f (f base (first values)) (rest values)))))
-
-(define (make-scales type)
-  (build-list 12 (λ (n) (scan (λ (x y) (modulo (+ x y) 12)) n type))))
-
-(define scales (append (make-scales major) (make-scales minor)))
-
 (define (chord->figure chord)
   (define (get-root chord acc)
     (cond
-      [(null? chord) acc]
+      [(set-empty? chord) acc]
       [else
        (define note (set-first chord))
        (get-root (set-rest chord)
@@ -43,13 +32,37 @@
                      acc)]
                    [(> (music:raw-note-octave acc) (music:raw-note-octave note)) note]
                    [else acc]))]))
-    (define root (get-root chord))
-    (define root-pitch (music:raw-note-pitch root))
-    (define chord-no-root (set-remove set root))
-    (cons (list root) (map (λ (note) (- (music:raw-note-pitch note) root)))))
-         
+  (define root (get-root chord #f))
+  (define root-pitch (music:raw-note-pitch root))
+  (define chord-no-root (set->list (set-remove chord root)))
+  (list root-pitch (sort (map (λ (note) (modulo (- (music:raw-note-pitch note) root-pitch) 12)) chord-no-root) <)))
 
-;; [Listof Chord] [Listof (list ChordNumber ChordNumber)] [Listof (list ChordNumber ChordNumber)] [Listof (list NoteNumber [Listof NoteNumber])] -> Void
+;; [Listof Chord] [Listof (list ChordNumber ChordNumber)]
+;; [Listof (list ChordNumber ChordNumber)]
+;; [Listof (list NoteNumber [Listof NoteNumber])] -> Void
 (define (check-harmonies chords transitions pivots universe)
   (define figures (map chord->figure chords))
-  (println figures))
+  (define proto-numerals
+    (build-list 12 (λ (n) (list n (map (λ (figure)
+                                         (list
+                                          (modulo (- (first figure) n) 12)
+                                          (second figure)))
+                                       figures)))))
+  
+  (define numerals
+    (map (λ (numeral-list)
+           (list (first numeral-list)
+                 (map (λ (proto-numeral)
+                        (define roman (assoc proto-numeral universe))
+                        (and roman (second roman)))
+                      (second numeral-list)))) proto-numerals))
+
+  (define (correct? numerals)
+    (println numerals)
+    (or (null? (rest numerals))
+        (and (member (list (first numerals) (second numerals)) transitions)
+             (correct? (rest numerals)))))
+
+  (define valid-numerals (filter correct? (map second numerals)))
+  (println valid-numerals)
+  (not (null? valid-numerals)))

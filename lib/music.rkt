@@ -6,7 +6,7 @@
                      syntax/stx
                      "types.rkt"
                      racket
-                     "constraints.rkt")
+                     "analysis.rkt")
          (prefix-in music: "repr.rkt"))
 
 (provide
@@ -17,7 +17,7 @@
   (syntax-parser
     [(_ voice ...)
      (define typed-voices (stx-map type-of #'(voice ...)))
-     #;(println (voices->chords (map second typed-voices)))
+     (check-harmonies (voices->chords (map second typed-voices)) '(('I 'I)) '() '(((0 (4 7)) 'I) ((2 (5 9)) 'ii) ((7 (4 7)) 'V)))
      (with-syntax ([(voice+ ...) (map first typed-voices)])
        #'(#%module-begin (provide score)
                          (define score (list voice+ ...))

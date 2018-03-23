@@ -19,7 +19,7 @@
 
 ;; A Scale is a list-of PitchNumber
 
-;; A Chord is a [set PitchNumber]
+;; A Chord is a [set raw-note]
 
 ;; A pitch-class has a Name and an Accidental
 (struct pitch-class (name accidental) #:transparent)
