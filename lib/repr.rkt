@@ -3,6 +3,8 @@
 (provide (all-defined-out))
 
 ;; A TimeSignature is a pair of numbers
+;; A time-signature is a pair of Number
+(struct time-signature (beats size) #:transparent)
 
 ;; A Name is one of
 ;; 'A 'B 'C 'D 'E 'F 'G
@@ -38,7 +40,7 @@
 (struct rest ())
 (struct rest-t rest (stx))
 
-;; a key-signature, a TimeSignature, and a [List-of measure]
+;; a key-signature, a time-signature, and a [List-of measure]
 (struct voice (key time measures) #:transparent)
 (struct voice-t voice (stx))
 

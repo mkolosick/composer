@@ -208,13 +208,21 @@
 
 ;; [List-of voice] -> [List-of Chord]
 (define (voices->chords voices)
-  (define voices-seq (map (λ (voice)
-                            (map (λ (note)
-                                   (if (music:rest? note)
+  (define smallest-beat-size (apply max (map (λ (voice) (music:time-signature-size (music:voice-time voice)))
+                                  voices)))
+
+  (define (voice->note-seq voice)
+    (define note-multiplier (/ smallest-beat-size (music:time-signature-size (music:voice-time voice))))
+    (flatten (map (λ (measure)
+           (map (λ (note)
+                  (define raw-note (if (music:rest? note)
                                        note
                                        (note-in-key->raw-note note (music:voice-key voice))))
-                                 (flatten (map music:measure-notes (music:voice-measures voice)))))
-                          voices))
+                  (make-list note-multiplier raw-note))
+                (music:measure-notes measure)))
+         (music:voice-measures voice))))
+
+  (define voices-seq (map voice->note-seq voices))
 
   (define (notes->chords voices-seq)
     (define non-empty-seq (filter cons? voices-seq))

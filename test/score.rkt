@@ -1,10 +1,10 @@
-#lang s-exp "../lib/music.rkt"
+#lang s-exp "form.rkt"
 
 (voice C 4 4
-       (c4 c4 c4 c4))
+       (G4 A4 B4 G5))
 
 (voice C 4 4
-       (e5 e5 e5 e5))
+       (E4 F4 D4 E4))
 
 (voice C 4 4
-       (g5 g5 g5 g5))
+       (C3 D3 G3 C3))
