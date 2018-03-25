@@ -64,34 +64,30 @@
     (define (try-pivot analysis other-analyses acc)
       (cond
         [(null? acc) (list (first analysis) (length analysis))]
-        [else
-         (define this (first analysis))
-         (define that (first (first acc)))
-         ;; if there is a pivot, perform it, otherwise, try the next pivot
-         (if (member (list (music:chord-symbol-symbol this) (music:chord-symbol-symbol that)) pivots)
-             ;; perform the pivot and try to find a path
-             (let ([result (find-path/helper
-                            (rest (first acc))
-                            (map rest (cons analysis (remove* (list (first acc)) other-analyses))))])
-               ;; if a path is found, return the result, otherwise, try the next pivot
-               (if (zero? (second result))
-                   result
-                   (min-result result (try-pivot analysis other-analyses (rest acc)))))
-             (try-pivot analysis other-analyses (rest acc)))]))
+        ;; if there is a pivot, perform it, otherwise, try the next pivot
+        [(member (list (music:chord-symbol-symbol (first analysis)) (music:chord-symbol-symbol (caar acc))) pivots)
+         ;; perform the pivot and try to find a path
+         (let ([result (find-path/helper
+                        (rest (first acc))
+                        (map rest (cons analysis (remove* (list (first acc)) other-analyses))))])
+           ;; if a path is found, return the result, otherwise, try the next pivot
+           (if (zero? (second result))
+               result
+               (min-result result (try-pivot analysis other-analyses (rest acc)))))]
+        [else (try-pivot analysis other-analyses (rest acc))]))
 
     (define (find-path/helper analysis other-analyses)
-      (if (null? analysis)
-          (list analysis 0)
-          (cond [(null? (rest analysis)) (list (first analysis) 0)]
-                [else
-                 ;; if the transition is valid, make it, otherwise, try pivoting
-                 (if (member (list (music:chord-symbol-symbol (first analysis)) (music:chord-symbol-symbol (second analysis))) transitions)
-                     (let ([result (find-path/helper (rest analysis) (map rest other-analyses))])
-                       ;; if following the transition led to success, return the result, otherwise, try pivoting
-                       (if (zero? (second result))
-                           result
-                           (min-result result (try-pivot analysis other-analyses other-analyses))))
-                     (try-pivot analysis other-analyses other-analyses))])))
+      (cond
+        [(null? analysis) (list analysis 0)]
+        [(null? (rest analysis)) (list (first analysis) 0)]
+        ;; if the transition is valid, make it, otherwise, try pivoting
+        [(member (list (music:chord-symbol-symbol (first analysis)) (music:chord-symbol-symbol (second analysis))) transitions)
+         (let ([result (find-path/helper (rest analysis) (map rest other-analyses))])
+           ;; if following the transition led to success, return the result, otherwise, try pivoting
+           (if (zero? (second result))
+               result
+               (min-result result (try-pivot analysis other-analyses other-analyses))))]
+        [else (try-pivot analysis other-analyses other-analyses)]))
     
     (map (λ (analysis) (find-path/helper analysis (remove* (list analysis) analyses))) analyses))
   
