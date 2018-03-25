@@ -16,7 +16,7 @@
 ;; a PitchNumber is an integer in the range [0, 11]
 ;; an Inverval is an integer in the range [0, 11]
 
-;; a raw-note is a PitchNumber and an integer octave
+;; a raw-note is a PitchNumber, an integer octave, a beat, and a duration
 (struct raw-note (pitch octave) #:transparent)
 (struct raw-note-t raw-note (stx))
 
@@ -56,3 +56,7 @@
 ;; type is 'major or 'minor
 (struct key-signature (root type) #:transparent)
 (struct key-signature-t key-signature (stx))
+
+;; a chord symbol is a symbol
+(struct chord-symbol (symbol))
+(struct chord-symbol-t chord-symbol (stx))

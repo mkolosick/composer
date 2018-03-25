@@ -8,7 +8,10 @@
          time-denominator
          key-signature
          key-scale
-         voices->chords)
+         voices->chords
+         pitch-class->PitchNumber
+         PitchNumber->pitch-class
+         chord->figure)
 
 (define note-name-parser
   (p:parser-compose (note-name <- (p:oneOf "abcdefgABCDEFG"))
@@ -138,6 +141,10 @@
                                          'none)))
   (+ base-index (accidental-semitones (music:pitch-class-accidental pitch-class))))
 
+;; PitchNumber -> pitch-class
+(define (PitchNumber->pitch-class number)
+  (list-ref note-seq number))
+
 ;; Note -> Number
 (define (staff-index note-name)
   (index-of '(C D E F G A B) note-name))
@@ -252,7 +259,16 @@
                    [(> (music:raw-note-octave acc) (music:raw-note-octave note)) note]
                    [else acc]))]))
   (define bass (get-bass chord #f))
-  (define root-pitch (music:raw-note-pitch bass))
+  (define bass-pitch (music:raw-note-pitch bass))
   (define chord-no-bass (set->list (set-remove chord bass)))
-  (figure bass-pitch
-          (sort (map (λ (note) (music:raw-note-t (modulo (- (music:raw-note-pitch note) bass-pitch) 12)) chord-no-bass) <))))
+  (music:figure-t
+   bass-pitch
+   (sort
+    (remove*
+     (list 0)
+     (remove-duplicates
+      (map
+       (λ (note) (modulo (- (music:raw-note-pitch note) bass-pitch) 12))
+       chord-no-bass)))
+     <)
+   (music:raw-note-t-stx bass)))
