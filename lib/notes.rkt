@@ -242,23 +242,12 @@
   (notes->chords voices-seq))
 
 (define (chord->figure chord)
-  (define (get-bass chord acc)
-    (cond
-      [(set-empty? chord) acc]
-      [else
-       (define note (set-first chord))
-       (get-bass (set-rest chord)
-                 (cond
-                   [(not acc) note]
-                   [(= (music:raw-note-octave acc) (music:raw-note-octave note))
-                    (if
-                     (< (music:raw-note-pitch note)
-                        (music:raw-note-pitch acc))
-                     note
-                     acc)]
-                   [(> (music:raw-note-octave acc) (music:raw-note-octave note)) note]
-                   [else acc]))]))
-  (define bass (get-bass chord #f))
+  (define (get-bass chord)
+    (argmin (λ (note) (+ (* music:num-intervals (music:raw-note-octave note))
+                         (music:raw-note-pitch note)))
+            (set->list chord)))
+  
+  (define bass (get-bass chord))
   (define bass-pitch (music:raw-note-pitch bass))
   (define chord-no-bass (set->list (set-remove chord bass)))
   (music:figure-t

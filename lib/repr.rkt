@@ -13,6 +13,8 @@
 ;; 'none 'sharp 'flat 'natural
 ;; 'sharpsharp 'flatflat
 
+(define num-intervals 12)
+
 ;; a PitchNumber is an integer in the range [0, 11]
 ;; an Inverval is an integer in the range [0, 11]
 
