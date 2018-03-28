@@ -147,7 +147,7 @@
        proto-numerals))
 
 ;; ChordForest -> Void
-(define (has-harmonic-progression! chord-forest)
+(define (verify-harmonic-progression chord-forest)
   (define-values (distance-dict pred-dict)
     (dag-shortest-paths chord-forest 'start))
   (define distance-to-end (dict-ref distance-dict 'end))

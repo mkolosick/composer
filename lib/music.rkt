@@ -4,6 +4,7 @@
                      "notes.rkt"
                      (prefix-in music: "repr.rkt")
                      syntax/stx
+                     syntax/id-set
                      "types.rkt"
                      racket
                      "analysis.rkt")
@@ -11,15 +12,27 @@
 
 (provide
  (rename-out [constraint-module-begin #%module-begin]))
-
+     
 (define-syntax constraint-module-begin
   (syntax-parser
-    [(_ _ ...)
+    [(_ (~alt (~once (~seq ((~datum chord-names) chord-names-things ...)))
+              (~once (~seq ((~datum progressions) progression-things ...)))
+              (~once (~seq ((~datum pivots) pivot-things ...))))
+        ...)
+     #:with (universe-hash (chord-name-id ...)) (chord-names #'(chord-names-things ...))
+     #:with progressions-hash (progressions #'(progression-things ...))
+     #:with pivots-hash (progressions #'(pivot-things ...))
+     
      #'(#%module-begin
         (provide (rename-out [music-module-begin #%module-begin])
                  voice)
 
-        (define-for-syntax measure-checkers (list check-measure-length))
+        (begin-for-syntax
+          (define chord-name-id 'chord-name-id) ...
+          (define chord-names universe-hash)
+          (define progressions progressions-hash)
+          (define pivots pivots-hash)
+          (define measure-checkers (list check-measure-length)))
 
         (define-syntax music-module-begin
           (syntax-parser
@@ -28,36 +41,11 @@
              (define voices (map second typed-voices))
 
              (define chord-forest (chords->ChordForest (voices->chords voices)
-                                                       #hash((I . (ii I iii viio6 ii6 vi V/V))
-                                                             (vi . (V/V))
-                                                             (V . (I V7/IV V I))
-                                                             (ii . (V))
-                                                             (I6 . (ii6))
-                                                             (V/V . (V))
-                                                             (iii . (V))
-                                                             (V7/IV . (IV))
-                                                             (viio6 . (I6))
-                                                             (ii6 . (V))
-                                                             (V7 . (I)))
-                              
-                                                       #hash((V/V . (V))
-                                                             (V7/IV . (V7)))
+                                                       progressions
+                                                       pivots
+                                                       chord-names))
 
-                                                       (hash (music:figure 0 '(4 7))     'I
-                                                             (music:figure 0 '(4))       'I
-                                                             (music:figure 0 '(4 7 10))  'V7/IV
-                                                             (music:figure 2 '(3 7))     'ii
-                                                             (music:figure 5 '(4 9))     'ii6
-                                                             (music:figure 7 '(4 7))     'V
-                                                             (music:figure 7 '(4 7 10))  'V7
-                                                             (music:figure 2 '(4 7))     'V/V
-                                                             (music:figure 4 '(3 7))     'iii
-                                                             (music:figure 4 '(3 8))     'I6
-                                                             (music:figure 4 '(8))       'I6
-                                                             (music:figure 11 '(3 6))    'viio
-                                                             (music:figure 2 '(3 9))     'viio6)))
-
-             (has-harmonic-progression! chord-forest)
+             (verify-harmonic-progression chord-forest)
                                                                      
 
              (with-syntax ([(voice+ (... ...)) (map first typed-voices)])
@@ -83,6 +71,39 @@
                 (music:voice-t key-type time-signature
                                (map second typed-measures)
                                #'voice)))])))]))
+
+(begin-for-syntax
+  (define (chord-names stx)
+    (syntax-parse stx
+      [((~seq chord-name:id (~and figure
+                                  (bass:exact-nonnegative-integer
+                                   interval:exact-nonnegative-integer ...))) ...)
+       (list
+        #`(hash #,@(intersperse
+                    (syntax->list #'((music:figure 'bass '(interval ...)) ...))
+                    (syntax->list #'(chord-name ...))))
+        (bound-id-set->list (immutable-bound-id-set (syntax->list #'(chord-name ...)))))]))
+
+  ;; add some free-indentifier-set stuff to prevent duplicates
+  (define (progressions stx)
+    (syntax-parse stx
+      [((start-chord:id (~and rhs (~or _:id
+                                       (_:id _:id ...)))) ...)
+
+       #:with (rhs-list ...)
+       (map (λ (rhs-thing)
+              (if (stx-list? rhs-thing)
+                  #`(list #,@(syntax->list rhs-thing))
+                  #`(list #,rhs-thing)))
+            (syntax->list #'(rhs ...)))
+       #`(hash #,@(intersperse
+                     (syntax->list #'(start-chord ...))
+                     (syntax->list #'(rhs-list ...))))]))
+
+  (define (intersperse as bs)
+    (foldr (λ (a b result)
+             (cons a (cons b result)))
+           '() as bs)))
 
 (define-syntax measure-parser
   (syntax-parser

@@ -23,12 +23,10 @@
 ;; A Transition is a (List Symbol Symbol)
 ;; A Universe is a [dict figure Symbol]
 
-;; A ChordForest is a unweighted, directed graph
+;; A ChordForest is a weighted, directed graph
 ;; it has a node 'start, a node 'end,
 ;; and chord-forest-nodes
 ;; it has edge-property transition-type: 'in-key | 'modulation
-;; NOTE: it might make sense to add a node 'orphaned
-;;       that points to the orphaned chords
 
 (struct chord-forest-node (key symbol index) #:transparent)
 
