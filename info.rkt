@@ -5,4 +5,5 @@
 
 (define deps
   '("base"
-    "parsack"))
+    "parsack"
+    "graph"))
