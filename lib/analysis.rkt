@@ -2,7 +2,8 @@
 
 (require (prefix-in music: "repr.rkt")
          "types.rkt"
-         "notes.rkt")
+         "notes.rkt"
+         graph)
 
 (provide (all-defined-out))
 
@@ -18,13 +19,102 @@
   (when (> measure-length num-beats) (blame stx "measure too long"))
   (when (< measure-length num-beats) (blame stx "measure too short")))
 
-;; [Listof Chord]
-;; [Listof Transition]
-;; [Listof Transition]
-;; Universe -> [Listof (list Key [Listof chord-symbol-t])]
-(define (check-harmonies chords transitions pivots universe)
-  (define figures (map chord->figure chords))
+;; chord-symbol chord-symbol
+;; [dict Symbol [set Symbol]]
+;; -> Boolean
+(define (valid-transition? chord1 chord2 transitions)
+  (set-member? (dict-ref transitions (music:chord-symbol-s chord1) (set))
+               (music:chord-symbol-s chord2)))
+
+;; [Listof (list key-signature [Listof chord-symbol-t])]
+;; [dict Symbol [set Symbol]]
+;; [dict Symbol [set Symbol]]
+;; -> ChordForest
+(define (build-chord-forest symbols-in-keys transitions pivots)
+  (define g (weighted-graph/directed '()))
+  (define-edge-property g transition-type)
+  (add-vertex! g 'start)
+  (add-vertex! g 'end)
   
+  ;; key-signature [Listof chord-symbol-t]
+  ;; [Listof (list key-signature [Listof chord-symbol-t])]
+  ;; Number
+  ;; -> Void
+  ;; adds all of the symbols from symbols-in-key to g with transitions to
+  ;; pivot chords in other keys and valid transitions in this key
+  (define (add-transitions-from-key key symbols-list other-key-symbols index)
+    (cond
+      ;; if we are at the end and there is a chord symbol
+      ;; then add an edge to 'end
+      [(empty? (rest symbols-list))
+       (when (music:chord-symbol-s (first symbols-list))
+         (define node (music:chord-forest-node key (first symbols-list) index))
+         (add-directed-edge! g node 'end 0))]
+      [(cons? (rest symbols-list))
+       (define chord1 (first symbols-list))
+       (define chord2 (second symbols-list))
+
+       (when (music:chord-symbol-s chord1)
+         (define node1 (music:chord-forest-node key chord1 index))
+         (add-vertex! g node1)
+         (when (zero? index)
+           (add-directed-edge! g 'start node1 0))
+         (when (and (music:chord-symbol-s chord2) (valid-transition? chord1 chord2 transitions))
+           (define node2 (music:chord-forest-node key chord2 (+ index 1)))
+           (add-directed-edge! g node1 node2 1)
+           (transition-type-set! node1 node2 'in-key))
+
+         (add-pivots key (first symbols-list)
+                     (map (λ (other-key-symbol)
+                            (list (first other-key-symbol)
+                                  (first (second other-key-symbol))))
+                          other-key-symbols)
+                     index))
+       
+       (add-transitions-from-key key (rest symbols-list)
+                                 (map (λ (other-key-symbol)
+                                        (list (first other-key-symbol)
+                                              (rest (second other-key-symbol))))
+                                      other-key-symbols)
+                                 (+ index 1))]))
+
+  ;; key-signature chord-symbol-t
+  ;; [Listof (list key-signature chord-symbol-t)]
+  ;; Number
+  ;; -> Void
+  ;; adds all vertical pivots
+  (define (add-pivots key symbol other-key-symbols index)
+    (when symbol
+      (for ([other-key-symbol other-key-symbols])
+           (match-define (list other-key other-symbol) other-key-symbol)
+           (when (and other-symbol (valid-transition? symbol other-symbol pivots))
+             (define node1 (music:chord-forest-node key symbol index))
+             (define node2 (music:chord-forest-node other-key other-symbol index))
+             (add-directed-edge! g node1 node2 0)
+             (transition-type-set! node1 node2 'modulation)))))
+
+  (for-each (λ (symbols-in-key)
+              (add-transitions-from-key (first symbols-in-key) (second symbols-in-key)
+                                        (remove symbols-in-key symbols-in-keys)
+                                        0))
+            symbols-in-keys)
+  
+  g)
+
+;; [Listof Chord]
+;; [dict Symbol [set Symbol]]
+;; [dict Symbol [set Symbol]]
+;; Universe
+;; -> ChordForest
+(define (chords->ChordForest chords transitions pivots universe)
+  (define chord-symbols (make-chord-symbols-in-keys chords universe))
+  (build-chord-forest chord-symbols transitions pivots))
+
+;; [Listof Chord] Universe -> [Listof (list key-signature [Listof figure-t])]
+(define (make-chord-symbols-in-keys chords universe)
+  (define figures (map chord->figure chords))
+
+  ;; 'major | 'minor -> [Listof (list key-signature [Listof figure-t])]
   (define (gen-numerals type)
     (build-list
      12
@@ -38,59 +128,35 @@
                      (music:figure-intervals figure)
                      (music:figure-t-stx figure)))
                   figures)))))
-  
+
   (define proto-numerals
     (append (gen-numerals 'major) (gen-numerals 'minor)))
-  
-  (define numerals
-    (map (λ (numeral-list)
-           (list (first numeral-list)
-                 (map (λ (proto-numeral)
-                        (music:chord-symbol-t
-                         (dict-ref
-                          universe
-                          (music:figure
-                           (music:figure-bass proto-numeral)
-                           (music:figure-intervals proto-numeral))
-                          #f)
-                         (music:figure-t-stx proto-numeral)))
-                      (second numeral-list))))
-         proto-numerals))
 
-  (define (find-path analyses)
+  (map (λ (numeral-list)
+         (list (first numeral-list)
+               (map (λ (proto-numeral)
+                      (music:chord-symbol-t
+                       (dict-ref
+                        universe
+                        (music:figure
+                         (music:figure-bass proto-numeral)
+                         (music:figure-intervals proto-numeral))
+                        #f)
+                       (music:figure-t-stx proto-numeral)))
+                    (second numeral-list))))
+       proto-numerals))
 
-    (define (min-result r1 r2) (if (< (second r1) (second r2)) r1 r2))
-    
-    (define (try-pivot analysis other-analyses acc)
-      (cond
-        [(null? acc) (list (first analysis) (length analysis))]
-        ;; if there is a pivot, perform it, otherwise, try the next pivot
-        [(member (list (music:chord-symbol-symbol (first analysis)) (music:chord-symbol-symbol (caar acc))) pivots)
-         ;; perform the pivot and try to find a path
-         (let ([result (find-path/helper
-                        (rest (first acc))
-                        (map rest (cons analysis (remove* (list (first acc)) other-analyses))))])
-           ;; if a path is found, return the result, otherwise, try the next pivot
-           (if (zero? (second result))
-               result
-               (min-result result (try-pivot analysis other-analyses (rest acc)))))]
-        [else (try-pivot analysis other-analyses (rest acc))]))
+;; ChordForest -> Void
+(define (has-harmonic-progression! chord-forest)
+  (define-values (distance-dict pred-dict)
+    (dag-shortest-paths chord-forest 'start))
+  (define distance-to-end (dict-ref distance-dict 'end))
 
-    (define (find-path/helper analysis other-analyses)
-      (cond
-        [(null? analysis) (list analysis 0)]
-        [(null? (rest analysis)) (list (first analysis) 0)]
-        ;; if the transition is valid, make it, otherwise, try pivoting
-        [(member (list (music:chord-symbol-symbol (first analysis)) (music:chord-symbol-symbol (second analysis))) transitions)
-         (let ([result (find-path/helper (rest analysis) (map rest other-analyses))])
-           ;; if following the transition led to success, return the result, otherwise, try pivoting
-           (if (zero? (second result))
-               result
-               (min-result result (try-pivot analysis other-analyses other-analyses))))]
-        [else (try-pivot analysis other-analyses other-analyses)]))
-    
-    (map (λ (analysis) (find-path/helper analysis (remove* (list analysis) analyses))) analyses))
-  
-  (define analyses-no-key (map second numerals))
-  (define result (argmin second (find-path analyses-no-key)))
-  (when (> (second result) 0) (blame (music:chord-symbol-t-stx (first result)) "score failed harmonic analysis")))
+  (when (infinite? distance-to-end)
+    (define farthest-chord
+      (argmax second
+              (sequence->list
+               (sequence-filter (λ (distance-pair)
+                                  (not (infinite? (second distance-pair))))
+                                (in-values-sequence (in-dict distance-dict))))))
+    (blame (music:chord-symbol-t-stx (music:chord-forest-node-symbol (first farthest-chord))) "could not find progression to next chord")))

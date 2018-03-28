@@ -26,34 +26,38 @@
             [(_ voice (... ...))
              (define typed-voices (stx-map type-of #'(voice (... ...))))
              (define voices (map second typed-voices))
-             
-             (check-harmonies (voices->chords voices) 
-                              '((I ii)    (I vi)
-                                (I I)     (V V)
-                                (vi V/V)  (V/V V)
-                                (V I)     (I V/V)
-                                (ii V)    (V I)
-                                (I iii)   (iii V)
-                                (V V7/IV) (V7/IV IV)
-                                (I viio6) (viio6 I6)
-                                (I6 ii6)  (ii6 V)
-                                (I ii6))
+
+             (define chord-forest (chords->ChordForest (voices->chords voices)
+                                                       #hash((I . (ii I iii viio6 ii6 vi V/V))
+                                                             (vi . (V/V))
+                                                             (V . (I V7/IV V I))
+                                                             (ii . (V))
+                                                             (I6 . (ii6))
+                                                             (V/V . (V))
+                                                             (iii . (V))
+                                                             (V7/IV . (IV))
+                                                             (viio6 . (I6))
+                                                             (ii6 . (V))
+                                                             (V7 . (I)))
                               
-                              '((V/V V) (V7/IV V7))
-                              
-                              (list (cons (music:figure 0 '(4 7))    'I)
-                                    (cons (music:figure 0 '(4))      'I)
-                                    (cons (music:figure 0 '(4 7 10)) 'V7/IV)
-                                    (cons (music:figure 2 '(3 7))    'ii)
-                                    (cons (music:figure 5 '(4 9))    'ii6)
-                                    (cons (music:figure 7 '(4 7))    'V)
-                                    (cons (music:figure 7 '(4 7 10)) 'V7)
-                                    (cons (music:figure 2 '(4 7))    'V/V)
-                                    (cons (music:figure 4 '(3 7))    'iii)
-                                    (cons (music:figure 4 '(3 8))    'I6)
-                                    (cons (music:figure 4 '(8))      'I6)
-                                    (cons (music:figure 11 '(3 6))   'viio)
-                                    (cons (music:figure 2 '(3 9))    'viio6)))
+                                                       #hash((V/V . (V))
+                                                             (V7/IV . (V7)))
+
+                                                       (hash (music:figure 0 '(4 7))     'I
+                                                             (music:figure 0 '(4))       'I
+                                                             (music:figure 0 '(4 7 10))  'V7/IV
+                                                             (music:figure 2 '(3 7))     'ii
+                                                             (music:figure 5 '(4 9))     'ii6
+                                                             (music:figure 7 '(4 7))     'V
+                                                             (music:figure 7 '(4 7 10))  'V7
+                                                             (music:figure 2 '(4 7))     'V/V
+                                                             (music:figure 4 '(3 7))     'iii
+                                                             (music:figure 4 '(3 8))     'I6
+                                                             (music:figure 4 '(8))       'I6
+                                                             (music:figure 11 '(3 6))    'viio
+                                                             (music:figure 2 '(3 9))     'viio6)))
+
+             (has-harmonic-progression! chord-forest)
                                                                      
 
              (with-syntax ([(voice+ (... ...)) (map first typed-voices)])
@@ -69,8 +73,8 @@
              (define time-signature (music:time-signature (syntax->datum #'numerator) (syntax->datum #'denominator)))
 
              (for ([measure-checker measure-checkers])
-               (for ([measure (map second typed-measures)])
-                 (measure-checker measure time-signature key-type)))
+                  (for ([measure (map second typed-measures)])
+                       (measure-checker measure time-signature key-type)))
               
              (with-syntax ([(measure+ (... ...)) (map first typed-measures)]
                            [key+ key+])

@@ -253,11 +253,10 @@
   (music:figure-t
    bass-pitch
    (sort
-    (remove*
-     (list 0)
-     (remove-duplicates
-      (map
-       (λ (note) (modulo (- (music:raw-note-pitch note) bass-pitch) 12))
-       chord-no-bass)))
-     <)
+    (filter (λ (pitch) (not (zero? pitch)))
+            (remove-duplicates
+             (map
+              (λ (note) (modulo (- (music:raw-note-pitch note) bass-pitch) 12))
+              chord-no-bass)))
+    <)
    (music:raw-note-t-stx bass)))
