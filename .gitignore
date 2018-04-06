@@ -11,3 +11,5 @@ compiled/
 
 doc/*
 !doc/*.scrbl
+
+*~
