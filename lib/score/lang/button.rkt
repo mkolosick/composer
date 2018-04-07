@@ -5,7 +5,8 @@
 (require racket/class
          racket/draw
          racket/runtime-path
-         racket/lazy-require)
+         racket/lazy-require
+         racket/path)
 (lazy-require
  ["gui.rkt"
   (execute-callback-with-rep:after-expression
@@ -18,11 +19,20 @@
 
 ;; file-render-score : Path Score -> Void
 
-;; file  : a path representing the source file that the score comes from
+;; file  : a path representing the *source* file that the score comes from
 ;; score : the score value provided by the module as `score`
 
 ;; Renders the `score` to a different file with a path relative to `file`.
 (define (file-render-score file score)
+  ;; The destination file is `music-notation/<name>.xml` relative to the
+  ;; `file`.
+  (define file-dir (path-only file))
+  (define file-name (file-name-from-path file))
+  (define destination
+    (path-add-extension
+     (build-path file-dir "music-notation" file-name)
+     #".xml"))
+  
   ;; TODO: render the score
   (void))
 
