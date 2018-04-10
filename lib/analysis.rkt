@@ -147,7 +147,7 @@
        proto-numerals))
 
 ;; ChordForest -> Void
-(define (verify-harmonic-progression chord-forest)
+(define (verify-harmonic-progression chord-forest first-blame-stx)
   (define-values (distance-dict pred-dict)
     (dag-shortest-paths chord-forest 'start))
   (define distance-to-end (dict-ref distance-dict 'end))
@@ -159,4 +159,8 @@
                (sequence-filter (λ (distance-pair)
                                   (not (infinite? (second distance-pair))))
                                 (in-values-sequence (in-dict distance-dict))))))
-    (blame (music:chord-symbol-t-stx (music:chord-forest-node-symbol (first farthest-chord))) "could not find progression to next chord")))
+    (define blame-stx (if (equal? (first farthest-chord) 'start)
+                          first-blame-stx
+                          (music:chord-symbol-t-stx
+                           (music:chord-forest-node-symbol (first farthest-chord)))))
+    (blame blame-stx "could not find progression to next chord")))

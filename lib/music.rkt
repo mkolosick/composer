@@ -40,12 +40,16 @@
              (define typed-voices (stx-map type-of #'(voice (... ...))))
              (define voices (map second typed-voices))
 
-             (define chord-forest (chords->ChordForest (voices->chords voices)
+             (define chords (voices->chords voices))
+
+             (define chord-forest (chords->ChordForest chords
                                                        progressions
                                                        pivots
                                                        chord-names))
 
-             (verify-harmonic-progression chord-forest)
+             (when (not (empty? chords))
+               (verify-harmonic-progression chord-forest
+                                            (music:raw-note-t-stx (set-first (first chords)))))
                                                                      
 
              (with-syntax ([(voice+ (... ...)) (map first typed-voices)])
