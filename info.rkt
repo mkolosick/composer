@@ -7,3 +7,5 @@
   '("base"
     "parsack"
     "graph"))
+
+(define scribblings '(("doc/manual.scrbl" ())))

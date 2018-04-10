@@ -8,3 +8,6 @@
 lib/compiled
 test/compiled
 compiled/
+
+doc/*
+!doc/*.scrbl
