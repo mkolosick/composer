@@ -23,8 +23,10 @@
 ;; [dict Symbol [set Symbol]]
 ;; -> Boolean
 (define (valid-transition? chord1 chord2 transitions)
-  (set-member? (dict-ref transitions (music:chord-symbol-s chord1) (set))
-               (music:chord-symbol-s chord2)))
+  (or
+   (set-member? (dict-ref transitions (music:chord-symbol-s chord1) (set))
+               (music:chord-symbol-s chord2))
+   (equal? chord1 chord2)))
 
 ;; [Listof (list key-signature [Listof chord-symbol-t])]
 ;; [dict Symbol [set Symbol]]
