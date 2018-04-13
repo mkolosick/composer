@@ -47,7 +47,7 @@
 ;; an Inverval is an integer in the range [0, 11]
 
 ;; a raw-note is a PitchNumber, an integer octave, a beat, and a duration
-(struct raw-note (pitch octave) #:transparent)
+(struct raw-note (pitch octave duration beat) #:transparent)
 (make-struct-t raw-note-t raw-note)
 
 ;; A Scale is a list-of PitchNumber
@@ -62,8 +62,8 @@
 (struct pitch-class (name accidental) #:transparent)
 (make-struct-t pitch-class-t pitch-class)
 
-;; a note has a pitch-class and an integer octave
-(struct note (pitch-class octave) #:transparent)
+;; a note has a pitch-class, an integer octave, a beat, and a duration
+(struct note (pitch-class octave duration beat) #:transparent)
 (make-struct-t note-t note)
 
 (define (note-name n)
@@ -82,6 +82,9 @@
 ;; a [List-of note]
 (struct measure (notes) #:transparent)
 (make-struct-t measure-t measure)
+
+(define (measure-length measure)
+  (length (measure-notes measure)))
 
 ;; type is 'major or 'minor
 (struct key-signature (root type) #:transparent)

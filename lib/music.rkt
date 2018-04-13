@@ -61,12 +61,12 @@
           (syntax-parser
             [(~and voice (_ key numerator:exact-positive-integer denominator:time-denominator measure (... ...)))
              (match-define (list key+ key-type) (type-of #'(key-parser key)))
-             (define typed-measures (stx-map type-of #'((measure-parser measure) (... ...))))
+             (define typed-measures (build-measure-structs (syntax->list #'(measure (... ...))) 0))
              (define time-signature (music:time-signature (syntax->datum #'numerator) (syntax->datum #'denominator)))
 
              (for ([measure-checker measure-checkers])
-                  (for ([measure (map second typed-measures)])
-                       (measure-checker measure time-signature key-type)))
+               (for ([measure (map second typed-measures)])
+                 (measure-checker measure time-signature key-type)))
               
              (with-syntax ([(measure+ (... ...)) (map first typed-measures)]
                            [key+ key+])
@@ -101,35 +101,53 @@
                   #`(list #,rhs-thing)))
             (syntax->list #'(rhs ...)))
        #`(hash #,@(intersperse
-                     (syntax->list #'(start-chord ...))
-                     (syntax->list #'(rhs-list ...))))]))
+                   (syntax->list #'(start-chord ...))
+                   (syntax->list #'(rhs-list ...))))]))
 
   (define (intersperse as bs)
     (foldr (λ (a b result)
              (cons a (cons b result)))
            '() as bs)))
 
-(define-syntax measure-parser
-  (syntax-parser
-    [(_ (~and measure (n ...)))
-     (define typed-notes (stx-map type-of #'((note-parser n) ...)))
+(define-for-syntax (build-measure-structs measures beat)
+  (if (null? measures)
+      measures
+      (let ([measure (type-of #`(measure-parser beat #,(first measures)))])
+        (cons measure (build-measure-structs (rest measures) (+ (music:measure-length measure) beat))))))
+
+(define-for-syntax (build-note-structs notes beat)
+  (if (null? notes)
+      notes
+      (let ([note (type-of #`(note-parser beat #,(first notes)))])
+        (cons note (build-note-structs (rest notes) (+ (music:measure-length note) beat))))))
+
+(define-syntax (measure-parser stx)
+  (printf "here\n")
+  (syntax-parse stx
+    [(_ beat (~and measure (n ...)))
+     (define typed-notes (build-note-structs (syntax->list #'(n ...)) (syntax->datum #'beat)))
      (with-syntax ([(n+ ...) (map first typed-notes)])
        (assign-type #'(music:measure (list n+ ...))
                     (music:measure-t (map second typed-notes)
                                      #'measure)))]))
 
 (define-syntax note-parser
-  (syntax-parser
-    [(_ n:note)
+  (syntax-parser 
+    [(_ beat n:note)
+     #'(note-parser beat (1/4 n))]
+    [(_ beat (duration n:note))
      (if (music:rest? (attribute n.note))
          (assign-type #'(music:rest) (music:rest-t #'n))
          (with-syntax ([note-name (datum->syntax #'n (music:note-name (attribute n.note)))]
                        [note-accidental (datum->syntax #'n (music:note-accidental (attribute n.note)))]
-                       [note-octave (datum->syntax #'n (music:note-octave (attribute n.note)))])
+                       [note-octave (datum->syntax #'n (music:note-octave (attribute n.note)))]
+                       [note-duration #'duration]
+                       [note-beat #'beat])
            (assign-type
             #'(music:note (music:pitch-class 'note-name 'note-accidental)
-                          'note-octave)
-            (attribute n.note))))]))
+                          'note-octave
+                          'note-beat)
+            (music:note-t (music:note-pitch-class (attribute n.note)) (music:note-octave (attribute n.note)) #'duration #'beat))))]))
 
 (define-syntax key-parser
   (syntax-parser
@@ -139,6 +157,8 @@
                    [pitch-accidental (datum->syntax #'k (music:pitch-class-accidental root-pitch))]
                    [key-type (datum->syntax #'k (music:key-signature-type (attribute k.key-signature)))])
        (assign-type
-        #'(music:key-signature (music:pitch-class 'pitch-name 'pitch-accidental)
+        #'(music:key-signature (music:pitch-class
+                                'pitch-name
+                                'pitch-accidental)
                                'key-type)
         (attribute k.key-signature)))]))

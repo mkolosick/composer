@@ -59,7 +59,7 @@
   (p:parser-compose (note-name <- note-name-parser)
                     (accidental <- accidental-parser)
                     (octave <- octave-parser)
-                    (p:return (music:note-t (music:pitch-class note-name accidental) octave stx))))
+                    (p:return (music:note-t (music:pitch-class note-name accidental) octave 0 0 stx))))
 
 (define (make-note-string-parser stx)
   (p:<or>
