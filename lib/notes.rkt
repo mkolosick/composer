@@ -65,7 +65,7 @@
   (p:<or>
    (p:try (p:parser-compose
            (result <- (p:<or> (p:>> (p:string "rest")
-                                    (p:return (music:rest-t stx)))
+                                    (p:return (music:rest-t 0 0 stx)))
                               (make-note-parser stx)))
            p:$eof
            (p:return result)))
@@ -173,7 +173,9 @@
   (define pitch (music:raw-note-pitch note))
   (music:raw-note (pitch-add-semitones pitch num-semi)
                   (+ (music:raw-note-octave note)
-                     (floor (/ (+ pitch num-semi) 12)))))
+                     (floor (/ (+ pitch num-semi) 12)))
+                  (music:raw-note-duration note)
+                  (music:raw-note-beat note)))
 
 ;; [List-of A] Number -> [List-of A]
 (define (rotate-left xs n)
@@ -202,7 +204,7 @@
 (define (note-in-key->raw-note note key)
   (define scale (key-scale key))
   (define base-pitch (list-ref scale (staff-index (music:note-name note))))
-  (define raw-note-result (note-add-semitones (music:raw-note base-pitch (music:note-octave note))
+  (define raw-note-result (note-add-semitones (music:raw-note base-pitch (music:note-octave note) (music:note-duration note) (music:note-beat note))
                                               (if (equal? (music:note-accidental note) 'natural)
                                                   (let ([scale-difference (map - c-major-scale scale)])
                                                     (list-ref scale-difference (staff-index (music:note-name note))))
@@ -211,6 +213,8 @@
   (if (music:note-t? note)
       (music:raw-note-t (music:raw-note-pitch raw-note-result)
                         (music:raw-note-octave raw-note-result)
+                        (music:raw-note-duration raw-note-result)
+                        (music:raw-note-beat raw-note-result)
                         (music:note-t-stx note))
       raw-note-result))
 

@@ -47,7 +47,8 @@
                                                        pivots
                                                        chord-names))
 
-             (when (not (empty? chords))
+
+             (when (and (not (empty? chords)) (not (dict-empty? progressions)))
                (verify-harmonic-progression chord-forest
                                             (music:raw-note-t-stx (set-first (first chords)))))
                                                                      
@@ -61,8 +62,8 @@
           (syntax-parser
             [(~and voice (_ key numerator:exact-positive-integer denominator:time-denominator measure (... ...)))
              (match-define (list key+ key-type) (type-of #'(key-parser key)))
-             (define typed-measures (build-measure-structs (syntax->list #'(measure (... ...))) 0))
              (define time-signature (music:time-signature (syntax->datum #'numerator) (syntax->datum #'denominator)))
+             (define typed-measures (build-measure-structs (syntax->list #'(measure (... ...))) time-signature 0))
 
              (for ([measure-checker measure-checkers])
                (for ([measure (map second typed-measures)])
@@ -109,26 +110,29 @@
              (cons a (cons b result)))
            '() as bs)))
 
-(define-for-syntax (build-measure-structs measures beat)
+(define-for-syntax (build-measure-structs measures time beat)
   (if (null? measures)
       measures
-      (let ([measure (type-of #`(measure-parser beat #,(first measures)))])
-        (cons measure (build-measure-structs (rest measures) (+ (music:measure-length measure) beat))))))
+      (let ([measure (type-of #`(measure-parser #,time #,beat #,(first measures)))])
+        (cons measure (build-measure-structs (rest measures) time (+ (music:measure-length (second measure)) beat))))))
 
-(define-for-syntax (build-note-structs notes beat)
+(define-for-syntax (build-note-structs notes time beat)
   (if (null? notes)
       notes
-      (let ([note (type-of #`(note-parser beat #,(first notes)))])
-        (cons note (build-note-structs (rest notes) (+ (music:measure-length note) beat))))))
+      (let ([note (type-of #`(note-parser #,beat #,(first notes)))])
+        (cons note (build-note-structs
+                    (rest notes)
+                    time
+                    (+ (* (music:time-signature-size time) (music:duration (second note))) beat))))))
 
 (define-syntax (measure-parser stx)
-  (printf "here\n")
   (syntax-parse stx
-    [(_ beat (~and measure (n ...)))
-     (define typed-notes (build-note-structs (syntax->list #'(n ...)) (syntax->datum #'beat)))
+    [(_ time beat (~and measure (n ...)))
+     (define typed-notes (build-note-structs (syntax->list #'(n ...)) (syntax->datum #'time) (syntax->datum #'beat)))
      (with-syntax ([(n+ ...) (map first typed-notes)])
-       (assign-type #'(music:measure (list n+ ...))
+       (assign-type #'(music:measure (list n+ ...) time)
                     (music:measure-t (map second typed-notes)
+                                     (syntax->datum #'time)
                                      #'measure)))]))
 
 (define-syntax note-parser
@@ -137,7 +141,7 @@
      #'(note-parser beat (1/4 n))]
     [(_ beat (duration n:note))
      (if (music:rest? (attribute n.note))
-         (assign-type #'(music:rest) (music:rest-t #'n))
+         (assign-type #'(music:rest 'duration 'beat) (music:rest-t (syntax->datum #'duration) (syntax->datum #'beat) #'n))
          (with-syntax ([note-name (datum->syntax #'n (music:note-name (attribute n.note)))]
                        [note-accidental (datum->syntax #'n (music:note-accidental (attribute n.note)))]
                        [note-octave (datum->syntax #'n (music:note-octave (attribute n.note)))]
@@ -146,8 +150,12 @@
            (assign-type
             #'(music:note (music:pitch-class 'note-name 'note-accidental)
                           'note-octave
-                          'note-beat)
-            (music:note-t (music:note-pitch-class (attribute n.note)) (music:note-octave (attribute n.note)) #'duration #'beat))))]))
+                          'note-duration
+                          note-beat) ;;sketchy
+            (music:note-t (music:note-pitch-class (attribute n.note)) (music:note-octave (attribute n.note))
+                          (syntax->datum #'note-duration)
+                          (syntax->datum #'note-beat)
+                          #'n))))]))
 
 (define-syntax key-parser
   (syntax-parser

@@ -12,7 +12,7 @@
 ;; MeasureChecker
 ;; blames the measure when the measure is too long
 (define (check-measure-length measure time-signature key-signature)
-  (define measure-length (length (music:measure-notes measure)))
+  (define measure-length (music:measure-length measure))
   (define num-beats (music:time-signature-beats time-signature))
   (define stx (music:measure-t-stx measure))
   
@@ -114,7 +114,7 @@
 
 ;; [Listof Chord] Universe -> [Listof (list key-signature [Listof figure-t])]
 (define (make-chord-symbols-in-keys chords universe)
-  (define figures (map chord->figure chords))
+  (define figures (map chord->figure (filter (compose not set-empty?) chords)))
 
   ;; 'major | 'minor -> [Listof (list key-signature [Listof figure-t])]
   (define (gen-numerals type)

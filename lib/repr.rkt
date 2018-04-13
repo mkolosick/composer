@@ -72,19 +72,31 @@
 (define (note-accidental n)
   (pitch-class-accidental (note-pitch-class n)))
 
-(struct rest ())
+(struct rest (duration beat))
 (make-struct-t rest-t rest)
+
+(define (duration note/rest)
+  ((if (rest? note/rest)
+      rest-duration
+      note-duration)
+   note/rest))
 
 ;; a key-signature, a time-signature, and a [List-of measure]
 (struct voice (key time measures) #:transparent)
 (make-struct-t voice-t voice)
 
 ;; a [List-of note]
-(struct measure (notes) #:transparent)
+(struct measure (notes time) #:transparent)
 (make-struct-t measure-t measure)
 
 (define (measure-length measure)
-  (length (measure-notes measure)))
+  (define notes (measure-notes measure))
+  (define size (time-signature-size (measure-time measure)))
+  (define (helper partial-notes)
+    (if (null? partial-notes)
+        0
+        (+ (* size (duration (first partial-notes))) (helper (cdr partial-notes)))))
+  (helper notes))
 
 ;; type is 'major or 'minor
 (struct key-signature (root type) #:transparent)
