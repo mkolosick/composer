@@ -17,11 +17,13 @@
   (syntax-parser
     [(_ (~alt (~once (~seq ((~datum chord-names) chord-names-things ...)))
               (~once (~seq ((~datum progressions) progression-things ...)))
-              (~once (~seq ((~datum pivots) pivot-things ...))))
+              (~once (~seq ((~datum pivots) pivot-things ...)))
+              (~once (~seq ((~datum phrases) phrase-things ...))))
         ...)
      #:with (universe-hash (chord-name-id ...)) (chord-names #'(chord-names-things ...))
      #:with progressions-hash (progressions #'(progression-things ...))
      #:with pivots-hash (progressions #'(pivot-things ...))
+     #:with phrase-list (phrases #'(phrase-things ...))
      
      #'(#%module-begin
         (provide (rename-out [music-module-begin #%module-begin])
@@ -32,7 +34,8 @@
           (define chord-names universe-hash)
           (define progressions progressions-hash)
           (define pivots pivots-hash)
-          (define measure-checkers (list check-measure-length)))
+          (define measure-checkers (list check-measure-length))
+          (define phrases phrase-list))
 
         (define-syntax music-module-begin
           (syntax-parser
@@ -41,8 +44,8 @@
              (define voices (map second typed-voices))
 
              (define chords (voices->chords voices))
-
-             (define
+             
+             #;(define
                phrases
                (list
                 (music:phrase
@@ -100,6 +103,28 @@
                     (syntax->list #'((music:figure 'bass '(interval ...)) ...))
                     (syntax->list #'(chord-name ...))))
         (bound-id-set->list (immutable-bound-id-set (syntax->list #'(chord-name ...)))))]))
+
+  #;(define (phrases stx)
+    (syntax-parse stx
+      [((length:number key:key-signature ((~datum cadence) cadence-key:key-signature type)) ...)
+       (define key-root (music:key-signature-root (attribute key.key-signature)))
+       (define cadence-root (music:key-signature-root (attribute cadence-key.key-signature)))
+       (with-syntax ([key-pitch (datum->syntax #'stx (music:pitch-class-name key-root))]
+                     [key-accidental (datum->syntax #'stx (music:pitch-class-accidental key-root))]
+                     [key-type (datum->syntax #'stx (music:key-signature-type (attribute key.key-signature)))]
+                     [cadence-pitch (datum->syntax #'stx (music:pitch-class-name cadence-root))]
+                     [cadence-accidental (datum->syntax #'stx (music:pitch-class-accidental cadence-root))]
+                     [cadence-type (datum->syntax #'stx (music:key-signature-type (attribute cadence-key.key-signature)))])
+       #'(list (music:phrase
+                'length
+                key*
+                (music:cadence cadence-key* 'type))
+               ...))]))
+
+  #;(music:phrase
+     2
+     (music:key-signature (music:pitch-class 'C 'none) 'major)
+     (music:cadence (music:key-signature (music:pitch-class 'G 'none) 'major) '((V I))))
 
   ;; add some free-indentifier-set stuff to prevent duplicates
   (define (progressions stx)

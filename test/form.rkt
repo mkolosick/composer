@@ -33,3 +33,7 @@
 (pivots
  (V/V V)
  (V7/IV V7))
+
+(phrases
+ (2 C (cadence G ((V I))))
+ (2 G (cadence C ((V7 I)))))
