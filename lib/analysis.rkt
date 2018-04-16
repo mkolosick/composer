@@ -56,8 +56,6 @@
                    (music:key-signature-type phrase-key))))
   (define trimmed-voices (discard-measures voices (- (music:phrase-length phrase) 1)))
   ;; Gross oversimplification of cadences, we only handle cadences on the last beat of the specified measure.
-  ;; with a special exception if we are on the second to last measure, wherein the cadence may be on the
-  ;; first beat of that measure.
   (define this-measure-last-beat
     (argmax music:note-beat
             (map
