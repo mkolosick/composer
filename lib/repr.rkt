@@ -30,6 +30,12 @@
 
 (struct chord-forest-node (key symbol index) #:transparent)
 
+;; A cadence is a list of symbol
+(struct cadence (key progressions))
+
+
+(struct phrase (length start-key cadence))
+
 ;; A TimeSignature is a pair of numbers
 ;; A time-signature is a pair of Number
 (struct time-signature (beats size) #:transparent)
@@ -58,6 +64,11 @@
 (struct figure (bass intervals) #:transparent)
 (make-struct-t figure-t figure)
 
+;; A figure-in-context has a PitchNumber bass and an ordered [List-of Interval], as well as a beat
+;; for reasons unknown, it is completely unrelated to figure/figure-t
+(struct fic (bass intervals beat) #:transparent)
+(make-struct-t fic-t fic)
+
 ;; A pitch-class has a Name and an Accidental
 (struct pitch-class (name accidental) #:transparent)
 (make-struct-t pitch-class-t pitch-class)
@@ -76,9 +87,24 @@
 (make-struct-t rest-t rest)
 
 (define (duration note/rest)
-  ((if (rest? note/rest)
-      rest-duration
-      note-duration)
+  ((cond
+     [(rest? note/rest)
+       rest-duration]
+     [(raw-note? note/rest)
+      raw-note-duration]
+     [else
+      note-duration])
+   note/rest))
+
+;; macro me
+(define (beat note/rest)
+  ((cond
+     [(rest? note/rest)
+       rest-beat]
+     [(raw-note? note/rest)
+      raw-note-beat]
+     [else
+      note-beat])
    note/rest))
 
 ;; a key-signature, a time-signature, and a [List-of measure]
@@ -103,5 +129,5 @@
 (make-struct-t key-signature-t key-signature)
 
 ;; a chord symbol is a symbol | #f
-(struct chord-symbol (s) #:transparent)
+(struct chord-symbol (s beat) #:transparent)
 (make-struct-t chord-symbol-t chord-symbol)

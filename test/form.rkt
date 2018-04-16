@@ -22,7 +22,7 @@
  (vi V/V)
  (V (I V7/IV V I))
  (ii V)
- (I6 ii6)
+ (I6 (I6 ii6))
  (V/V V)
  (iii V)
  (V7/IV IV)

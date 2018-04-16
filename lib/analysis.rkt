@@ -19,13 +19,120 @@
   (when (> measure-length num-beats) (blame stx "measure too long"))
   (when (< measure-length num-beats) (blame stx "measure too short")))
 
+(define (verify-form phrases voices graph)
+  (define
+    remaining-measures
+    (foldl (λ (phrase remaining-measures)
+             (verify-phrase
+              phrase
+              remaining-measures
+              graph))
+           voices
+           phrases))
+  (unless (null? (music:voice-measures (first remaining-measures)))
+    (blame (music:voice-t-stx (first voices)) "Too long for form constraints")))
+
+(define (verify-phrase phrase voices graph)
+  (define vertices (get-vertices graph))
+  (define phrase-key (music:phrase-start-key phrase))
+  (define maybe-start
+    (filter
+     (λ (vertex)
+       (and
+        (not (symbol? vertex))
+        (equal?
+         (music:chord-forest-node-key vertex)
+         phrase-key)
+        (equal?
+         (music:chord-symbol-beat (music:chord-forest-node-symbol vertex))
+         ;; this may cause trouble depending on how we implement ties over barines
+         ;; also it makes me want to throw up, aesthetically speaking.
+         (music:beat (first (music:measure-notes (first (music:voice-measures (first voices)))))))))
+     vertices))
+  (when (null? maybe-start)
+    (blame (music:measure-t-stx (first (music:voice-measures (first voices))))
+           (format "Incorrect start key. Expected: ~a ~a"
+                   (music:pitch-class-name (music:key-signature-root phrase-key))
+                   (music:key-signature-type phrase-key))))
+  (define trimmed-voices (discard-measures voices (- (music:phrase-length phrase) 1)))
+  ;; Gross oversimplification of cadences, we only handle cadences on the last beat of the specified measure.
+  ;; with a special exception if we are on the second to last measure, wherein the cadence may be on the
+  ;; first beat of that measure.
+  (define this-measure-last-beat
+    (argmax music:note-beat
+            (map
+             (λ (voice)
+               (last (music:measure-notes (first (music:voice-measures voice)))))
+             trimmed-voices)))
+  (define maybe-vertex
+    (filter
+     (λ (vertex)
+       (and
+        (not (symbol? vertex))
+        (equal?
+         (music:chord-forest-node-key vertex)
+         (music:cadence-key (music:phrase-cadence phrase)))
+        (equal?
+         (music:chord-symbol-beat (music:chord-forest-node-symbol vertex))
+         (music:note-beat this-measure-last-beat))))
+     vertices))
+  (unless
+      (and
+       (not (empty? maybe-vertex))
+       (ormap
+        (λ (cadence) (verify-cadence (reverse cadence) (music:cadence-key (music:phrase-cadence phrase)) (first maybe-vertex) graph))
+        (music:cadence-progressions (music:phrase-cadence phrase))))
+    (blame (music:note-t-stx this-measure-last-beat) "Cadence specified in form was not found."))
+  (discard-measures trimmed-voices 1))
+
+(define (verify-cadence cadence key vertex graph)
+  (cond
+    [(null? cadence) #t]
+    [(not (equal?
+           (music:chord-symbol-s (music:chord-forest-node-symbol vertex))
+           (first cadence))) #f]
+    [else
+     (define vertices (foldl (λ (edge acc)
+                               (if (equal? (second edge) vertex) (cons (first edge) acc) acc))
+                             '() (get-edges graph)))
+     (define maybe-next
+       (filter
+        (λ (vertex)
+          (and
+           (not (symbol? vertex))
+           (equal?
+            (music:chord-forest-node-key vertex)
+            key)
+           vertices))
+        vertices))
+     (or (null? (rest cadence))
+         (and (not (null? maybe-next))
+              (verify-cadence (rest cadence) key (first maybe-next) graph)))]))
+
+(define (discard-measures voices n)
+  (define measures (map music:voice-measures voices))
+  (define (helper measures n)
+    (cond
+      [(zero? n) measures]
+      [(null? measures)
+       (blame
+        (music:measure-t-stx
+         (last (music:voice-measures (first voices)))
+         (format "Missing ~a measures to satisfy form constraints." n)))]
+      [else (helper (map rest measures) (sub1 n))]))
+  (map
+   (λ (voice ms)
+     (music:voice (music:voice-key voice) (music:voice-time voice) ms))
+   voices
+   (helper measures n)))
+
 ;; chord-symbol chord-symbol
 ;; [dict Symbol [set Symbol]]
 ;; -> Boolean
 (define (valid-transition? chord1 chord2 transitions)
   (or
    (set-member? (dict-ref transitions (music:chord-symbol-s chord1) (set))
-               (music:chord-symbol-s chord2))
+                (music:chord-symbol-s chord2))
    (equal? chord1 chord2)))
 
 ;; [Listof (list key-signature [Listof chord-symbol-t])]
@@ -88,12 +195,12 @@
   (define (add-pivots key symbol other-key-symbols index)
     (when symbol
       (for ([other-key-symbol other-key-symbols])
-           (match-define (list other-key other-symbol) other-key-symbol)
-           (when (and other-symbol (valid-transition? symbol other-symbol pivots))
-             (define node1 (music:chord-forest-node key symbol index))
-             (define node2 (music:chord-forest-node other-key other-symbol index))
-             (add-directed-edge! g node1 node2 0)
-             (transition-type-set! node1 node2 'modulation)))))
+        (match-define (list other-key other-symbol) other-key-symbol)
+        (when (and other-symbol (valid-transition? symbol other-symbol pivots))
+          (define node1 (music:chord-forest-node key symbol index))
+          (define node2 (music:chord-forest-node other-key other-symbol index))
+          (add-directed-edge! g node1 node2 0)
+          (transition-type-set! node1 node2 'modulation)))))
 
   (for-each (λ (symbols-in-key)
               (add-transitions-from-key (first symbols-in-key) (second symbols-in-key)
@@ -112,11 +219,11 @@
   (define chord-symbols (make-chord-symbols-in-keys chords universe))
   (build-chord-forest chord-symbols transitions pivots))
 
-;; [Listof Chord] Universe -> [Listof (list key-signature [Listof figure-t])]
+;; [Listof Chord] Universe -> [Listof (list key-signature [Listof fic-t])]
 (define (make-chord-symbols-in-keys chords universe)
   (define figures (map chord->figure (filter (compose not set-empty?) chords)))
 
-  ;; 'major | 'minor -> [Listof (list key-signature [Listof figure-t])]
+  ;; 'major | 'minor -> [Listof (list key-signature [Listof fic-t])]
   (define (gen-numerals type)
     (build-list
      12
@@ -125,10 +232,11 @@
               (PitchNumber->pitch-class n)
               type)
              (map (λ (figure)
-                    (music:figure-t
-                     (modulo (- (music:figure-bass figure) n) 12)
-                     (music:figure-intervals figure)
-                     (music:figure-t-stx figure)))
+                    (music:fic-t
+                     (modulo (- (music:fic-bass figure) n) 12)
+                     (music:fic-intervals figure)
+                     (music:fic-beat figure)
+                     (music:fic-t-stx figure)))
                   figures)))))
 
   (define proto-numerals
@@ -141,10 +249,11 @@
                        (dict-ref
                         universe
                         (music:figure
-                         (music:figure-bass proto-numeral)
-                         (music:figure-intervals proto-numeral))
+                         (music:fic-bass proto-numeral)
+                         (music:fic-intervals proto-numeral))
                         #f)
-                       (music:figure-t-stx proto-numeral)))
+                       (music:fic-beat proto-numeral)
+                       (music:fic-t-stx proto-numeral)))
                     (second numeral-list))))
        proto-numerals))
 

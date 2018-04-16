@@ -42,16 +42,28 @@
 
              (define chords (voices->chords voices))
 
+             (define
+               phrases
+               (list
+                (music:phrase
+                 2
+                 (music:key-signature (music:pitch-class 'C 'none) 'major)
+                 (music:cadence (music:key-signature (music:pitch-class 'G 'none) 'major) '((V I))))
+                (music:phrase
+                 2
+                 (music:key-signature (music:pitch-class 'G 'none) 'major)
+                 (music:cadence (music:key-signature (music:pitch-class 'C 'none) 'major) '((V I) (V7 I))))))
+
              (define chord-forest (chords->ChordForest chords
                                                        progressions
                                                        pivots
                                                        chord-names))
 
-
              (when (and (not (empty? chords)) (not (dict-empty? progressions)))
                (verify-harmonic-progression chord-forest
                                             (music:raw-note-t-stx (set-first (first chords)))))
-                                                                     
+
+             (verify-form phrases voices chord-forest)
 
              (with-syntax ([(voice+ (... ...)) (map first typed-voices)])
                #'(#%module-begin (provide score)

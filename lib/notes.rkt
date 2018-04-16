@@ -220,28 +220,71 @@
 
 ;; [List-of voice] -> [List-of Chord]
 (define (voices->chords voices)
-  (define smallest-beat-size (apply max (map (λ (voice) (music:time-signature-size (music:voice-time voice)))
-                                             voices)))
 
   (define (voice->note-seq voice)
-    (define note-multiplier (/ smallest-beat-size (music:time-signature-size (music:voice-time voice))))
-    (flatten (map (λ (measure)
-                    (map (λ (note)
-                           (define raw-note (if (music:rest? note)
-                                                note
-                                                (note-in-key->raw-note note (music:voice-key voice))))
-                           (make-list note-multiplier raw-note))
-                         (music:measure-notes measure)))
-                  (music:voice-measures voice))))
+    (foldl (λ (measure acc)
+             (append
+              acc
+              (map (λ (note)
+                     (if (music:rest? note)
+                         note
+                         (note-in-key->raw-note note (music:voice-key voice))))
+                   (music:measure-notes measure))))
+           '()
+           (music:voice-measures voice)))
 
-  (define voices-seq (map voice->note-seq voices))
+  (define voices-seq (map (λ (voice) (list (music:voice-time voice) (voice->note-seq voice))) voices))
 
+  (define (next voices-seq)
+    (define times (map first voices-seq))
+    (define voices-notes (map second voices-seq))
+    (define notes (map (λ (voice) (first voice)) voices-notes))
+    (define more (map (λ (voice) (rest voice)) voices-notes))
+    (define min (argmin music:duration notes))
+    (define (helper notes more duration)
+      (map (λ (note voice time)
+             (define diff (- (music:duration note) duration))
+             (define new-beat (+ (music:beat note) (* (music:time-signature-size time) duration)))
+             (cond
+               [(not (zero? diff))
+                (define out
+                  (if (music:raw-note? note)
+                      (music:raw-note-t
+                       (music:raw-note-pitch note)
+                       (music:raw-note-octave note)
+                       duration
+                       (music:raw-note-beat note)
+                       (music:raw-note-t-stx note))
+                      (music:rest-t
+                       duration
+                       (music:rest-beat note)
+                       (music:rest-t-stx note))))
+                (define new-note
+                  (if (music:raw-note? note)
+                      (music:raw-note-t
+                       (music:raw-note-pitch note)
+                       (music:raw-note-octave note)
+                       diff
+                       new-beat
+                       (music:raw-note-t-stx note))
+                      (music:rest-t
+                       diff
+                       new-beat
+                       (music:rest-t-stx note))))
+                (list out (list time (cons new-note voice)))]
+               [else (list note (list time voice))])) notes more times))
+    
+    (define result (helper notes more (music:duration min)))
+    (values (map first result) (map second result)))
+
+  
   (define (notes->chords voices-seq)
-    (define non-empty-seq (filter cons? voices-seq))
     (cond
-      [(empty? non-empty-seq) empty]
-      [else (cons (list->set (filter music:raw-note? (map first non-empty-seq)))
-                  (notes->chords (map rest non-empty-seq)))]))
+      [(empty? (second (first voices-seq))) empty]
+      [else
+       (define-values (notes more) (next voices-seq))
+       (cons (list->set (filter music:raw-note? notes))
+                  (notes->chords more))]))
   
   (notes->chords voices-seq))
 
@@ -254,7 +297,7 @@
   (define bass (get-bass chord))
   (define bass-pitch (music:raw-note-pitch bass))
   (define chord-no-bass (set->list (set-remove chord bass)))
-  (music:figure-t
+  (music:fic-t
    bass-pitch
    (sort
     (filter (λ (pitch) (not (zero? pitch)))
@@ -263,4 +306,5 @@
               (λ (note) (modulo (- (music:raw-note-pitch note) bass-pitch) 12))
               chord-no-bass)))
     <)
+   (music:raw-note-beat bass)
    (music:raw-note-t-stx bass)))
