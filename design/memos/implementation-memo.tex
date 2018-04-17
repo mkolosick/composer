@@ -1,0 +1,90 @@
+\documentclass{article}
+
+\usepackage[bottom=1in,top=1in]{geometry}
+
+\linespread{1.5}
+
+\usepackage{hyperref}
+
+\makeatletter
+\newcommand{\makeheader}{%
+  \noindent
+  \begin{tabular}{@{}ll}
+    \ifdefined\@recipient
+      \textsc{To: } & \@recipient{} \\
+    \fi
+    \ifdefined\@from
+      \textsc{From: } & \@from{} \\
+    \fi
+    \ifdefined\@subject
+      \textsc{Subject: } & \@subject{} \\
+    \fi
+  \end{tabular}
+  \vspace{1\baselineskip}
+}
+\newcommand{\recipient}[1]{\newcommand{\@recipient}{#1}}
+\newcommand{\from}[1]{\newcommand{\@from}{#1}}
+\newcommand{\subject}[1]{\newcommand{\@subject}{#1}}
+
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+    {\z@}
+    {-1em}%
+    {\itshape}}
+\makeatother
+
+\newcommand{\composer}{\texttt{\#lang composer}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+
+\recipient{Matthias Felleisen}
+\from{Jared Gentner and Matthew Kolosick}
+\subject{Implementation Progress Report for \composer}
+
+\pagenumbering{gobble}
+
+\begin{document}
+
+\makeheader{}
+
+In its present state, \composer{} serves as a proof of concept for the idea of a
+musical teaching language implemented as a DSL. However, the notation as it
+stands is unworkable. We have implemented the majority of the technical details
+in our proposal, and in using the language have come across the shortcomings of
+the notation. Through the implementation process, we have also discovered
+additional constraints that might be relevant in a classroom setting. These
+observations will guide our future work.
+
+\composer{} currently covers the majority of the milestones from our design
+proposal. We have developed notation and constraint languages as well as
+implemented harmonic and formal analyses. Our harmonic analysis does not handle
+non-chord tones, however the constraints allow for specifying certain types of
+key modulations. The formal analysis makes some simplifying assumptions, but
+works with scores that meet those assumptions. Handling non-chord tones will
+require significant design work, and we would like to further validate the
+usefulness of the language before spending the time.
+
+The most significant challenge for implementing \composer{} is writing the
+examples for testing. Writing music as S-expressions is not viable. As an
+example, we transcribed an eight measure Bach chorale. The transcription is
+nearly 600 characters wide. Of particular note is how musical notations rely on
+vertical alignment, an aspect poorly handled by textual media.
+
+Vertical alignment was also notable in the other major implementation challenge:
+type inference of chords. The algorithm for this took substantial work, and does
+not currently guarantee a specific typing, just that one exists. A single score
+could have multiple correct typings. This could lead to poor error messages when
+a possible typing does not align with user intent. To account for this, we would
+like a way for students to annotate certain chords with their intended chord
+symbol. This is a very vertical notion that seems to have no reasonable
+notation in an S-expression format.
+
+Moving forward, we would like to expand the notation system to include a visual
+score editor. This will make it so that students might actually be able to use
+the language. It will also open up the possibility of students annotating their
+scores and the better error messages that would allow. In terms of the analysis,
+we would like to implement non-chord tone recognition and voice-leading
+constraints. Lastly, we would like to present the system to teachers and
+students to evaluate its utility.
+
+\end{document}
