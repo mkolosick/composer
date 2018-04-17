@@ -23,7 +23,7 @@
      #:with (universe-hash (chord-name-id ...)) (chord-names #'(chord-names-things ...))
      #:with progressions-hash (progressions #'(progression-things ...))
      #:with pivots-hash (progressions #'(pivot-things ...))
-     #:with phrase-list (phrases #'(phrase-things ...))
+     #:with (phrase-list-item ...) (stx-map phrase-parser #'(phrase-things ...))
      
      #'(#%module-begin
         (provide (rename-out [music-module-begin #%module-begin])
@@ -35,7 +35,7 @@
           (define progressions progressions-hash)
           (define pivots pivots-hash)
           (define measure-checkers (list check-measure-length))
-          (define phrases phrase-list))
+          (define phrases (list phrase-list-item ...)))
 
         (define-syntax music-module-begin
           (syntax-parser
@@ -44,18 +44,6 @@
              (define voices (map second typed-voices))
 
              (define chords (voices->chords voices))
-             
-             #;(define
-               phrases
-               (list
-                (music:phrase
-                 2
-                 (music:key-signature (music:pitch-class 'C 'none) 'major)
-                 (music:cadence (music:key-signature (music:pitch-class 'G 'none) 'major) '((V I))))
-                (music:phrase
-                 2
-                 (music:key-signature (music:pitch-class 'G 'none) 'major)
-                 (music:cadence (music:key-signature (music:pitch-class 'C 'none) 'major) '((V I) (V7 I))))))
 
              (define chord-forest (chords->ChordForest chords
                                                        progressions
@@ -66,7 +54,8 @@
                (verify-harmonic-progression chord-forest
                                             (music:raw-note-t-stx (set-first (first chords)))))
 
-             (verify-form phrases voices chord-forest)
+             (when (not (empty? phrases))
+               (verify-form phrases voices chord-forest))
 
              (with-syntax ([(voice+ (... ...)) (map first typed-voices)])
                #'(#%module-begin (provide score)
@@ -81,8 +70,8 @@
              (define typed-measures (build-measure-structs (syntax->list #'(measure (... ...))) time-signature 0))
 
              (for ([measure-checker measure-checkers])
-               (for ([measure (map second typed-measures)])
-                 (measure-checker measure time-signature key-type)))
+                  (for ([measure (map second typed-measures)])
+                       (measure-checker measure time-signature key-type)))
               
              (with-syntax ([(measure+ (... ...)) (map first typed-measures)]
                            [key+ key+])
@@ -104,9 +93,9 @@
                     (syntax->list #'(chord-name ...))))
         (bound-id-set->list (immutable-bound-id-set (syntax->list #'(chord-name ...)))))]))
 
-  #;(define (phrases stx)
+  (define (phrase-parser stx)
     (syntax-parse stx
-      [((length:number key:key-signature ((~datum cadence) cadence-key:key-signature type)) ...)
+      [(length:number key:key-signature ((~datum cadence) cadence-key:key-signature type))
        (define key-root (music:key-signature-root (attribute key.key-signature)))
        (define cadence-root (music:key-signature-root (attribute cadence-key.key-signature)))
        (with-syntax ([key-pitch (datum->syntax #'stx (music:pitch-class-name key-root))]
@@ -115,16 +104,10 @@
                      [cadence-pitch (datum->syntax #'stx (music:pitch-class-name cadence-root))]
                      [cadence-accidental (datum->syntax #'stx (music:pitch-class-accidental cadence-root))]
                      [cadence-type (datum->syntax #'stx (music:key-signature-type (attribute cadence-key.key-signature)))])
-       #'(list (music:phrase
-                'length
-                key*
-                (music:cadence cadence-key* 'type))
-               ...))]))
-
-  #;(music:phrase
-     2
-     (music:key-signature (music:pitch-class 'C 'none) 'major)
-     (music:cadence (music:key-signature (music:pitch-class 'G 'none) 'major) '((V I))))
+         #'(music:phrase 'length
+                         (music:key-signature (music:pitch-class 'key-pitch 'key-accidental) 'key-type)
+                         (music:cadence (music:key-signature (music:pitch-class 'cadence-pitch 'cadence-accidental) 'cadence-type)
+                                        'type)))]))
 
   ;; add some free-indentifier-set stuff to prevent duplicates
   (define (progressions stx)
@@ -188,7 +171,7 @@
             #'(music:note (music:pitch-class 'note-name 'note-accidental)
                           'note-octave
                           'note-duration
-                          note-beat) ;;sketchy
+                          note-beat)
             (music:note-t (music:note-pitch-class (attribute n.note)) (music:note-octave (attribute n.note))
                           (syntax->datum #'note-duration)
                           (syntax->datum #'note-beat)

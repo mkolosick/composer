@@ -31,10 +31,9 @@
 (struct chord-forest-node (key symbol index) #:transparent)
 
 ;; A cadence is a list of symbol
-(struct cadence (key progressions))
+(struct cadence (key progressions) #:transparent)
 
-
-(struct phrase (length start-key cadence))
+(struct phrase (length start-key cadence) #:transparent)
 
 ;; A TimeSignature is a pair of numbers
 ;; A time-signature is a pair of Number

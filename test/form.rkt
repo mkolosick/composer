@@ -36,4 +36,4 @@
 
 (phrases
  (2 C (cadence G ((V I))))
- (2 G (cadence C ((V7 I)))))
+ (2 G (cadence C ((V7 I) (V I)))))
