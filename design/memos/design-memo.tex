@@ -1,0 +1,83 @@
+\documentclass{article}
+
+\usepackage{hyperref}
+
+\makeatletter
+\newcommand{\makeheader}{%
+  \noindent
+  \begin{tabular}{@{}ll}
+    \ifdefined\@recipient
+      \textsc{To: } & \@recipient{} \\
+    \fi
+    \ifdefined\@from
+      \textsc{From: } & \@from{} \\
+    \fi
+    \ifdefined\@subject
+      \textsc{Subject: } & \@subject{} \\
+    \fi
+  \end{tabular}
+  \vspace{1\baselineskip}
+}
+\newcommand{\recipient}[1]{\newcommand{\@recipient}{#1}}
+\newcommand{\from}[1]{\newcommand{\@from}{#1}}
+\newcommand{\subject}[1]{\newcommand{\@subject}{#1}}
+
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+    {\z@}
+    {-1em}%
+    {\itshape}}
+\makeatother
+
+\newcommand{\composer}{\texttt{\#lang composer}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+
+\recipient{Matthias Felleisen}
+\from{Jared Gentner and Matthew Kolosick}
+\subject{Design Proposal for \composer}
+
+\pagenumbering{gobble}
+
+\begin{document}
+
+\makeheader{}
+
+Western classical music has a long history. Over the centuries, both the
+notation system and the conception of musical harmony have evolved. For
+beginning music students, the full complexity of this system is overwhelming.
+Following in the vein of the Racket Student Languages, we propose \composer{} as
+a system for gradually working students up to a complete compositional framework
+from fundamental building blocks.
+
+The language will provide two sub-languages, one for teachers and one for
+students. The language for teachers will allow them to define the
+constraints under which their students must operate. This language will allow
+teachers to constrain students harmonically and formally.
+
+The second language will be for students to write their pieces. Here students
+will write a score under the constraints provided by their teacher. The student
+language will present errors when students diverge from the rules their teachers
+have provided.
+
+\section*{Language Specification}
+
+Our specification of grammar and scoping rules is available at
+\url{https://github.com/mkolosick/composer/blob/master/design/spec.org}.
+
+\section*{Milestones}
+
+We plan to follow these steps in developing \composer{}.
+\begin{enumerate}
+  \item We will develop the notation language.
+  \item We will implement a harmonic analyzer that handles a single key with no
+    non-chord tones.
+  \item We will then construct the constraint sub-language that only enforces
+    constraints using the previously written analyzer.
+  \item We will expand the harmonic analyzer to handle key modulations.
+  \item We will then write the analyzer for form constraints integrating this
+    analysis into the constraint sub-language.
+  \item We will then expand the harmonic analysis to allow non-chord tones.
+\end{enumerate}
+
+\end{document}
