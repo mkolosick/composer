@@ -27,6 +27,8 @@
      
      #'(#%module-begin
         (provide (rename-out [music-module-begin #%module-begin])
+                 ; needed for the "Render Score" button for some reason
+                 #%top-interaction
                  voice)
 
         (begin-for-syntax
